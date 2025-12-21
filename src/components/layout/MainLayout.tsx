@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Link, useLocation, useNavigate } from "react-router-dom";
+import { Link, useLocation, useNavigate, Outlet } from "react-router-dom";
 import {
   LayoutDashboard,
   Users,
@@ -34,10 +34,6 @@ import {
 import { useAuth } from "@/auth/AuthContext";
 import { toast } from "sonner";
 
-interface MainLayoutProps {
-  children: React.ReactNode;
-}
-
 const navigation = [
   { name: "仪表盘", href: "/", icon: LayoutDashboard },
   { name: "用户管理", href: "/users", icon: Users },
@@ -47,7 +43,7 @@ const navigation = [
   { name: "通知中心", href: "/notifications", icon: Bell },
 ];
 
-export default function MainLayout({ children }: MainLayoutProps) {
+export default function MainLayout() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const location = useLocation();
   const navigate = useNavigate();
@@ -84,7 +80,7 @@ export default function MainLayout({ children }: MainLayoutProps) {
     <div className="min-h-screen bg-background">
       {/* Mobile sidebar backdrop */}
       {sidebarOpen && (
-        <div 
+        <div
           className="fixed inset-0 z-40 bg-foreground/20 backdrop-blur-sm lg:hidden"
           onClick={() => setSidebarOpen(false)}
         />
@@ -100,7 +96,7 @@ export default function MainLayout({ children }: MainLayoutProps) {
         <div className="flex h-full flex-col">
           {/* Logo */}
           <div className="flex h-16 items-center justify-between px-6 border-b border-border">
-              <Link to="/" className="flex items-center gap-2">
+            <Link to="/" className="flex items-center gap-2">
               <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary">
                 <FileCheck className="h-5 w-5 text-primary-foreground" />
               </div>
@@ -137,7 +133,10 @@ export default function MainLayout({ children }: MainLayoutProps) {
                   <item.icon className="h-5 w-5" />
                   {item.name}
                   {item.name === "通知中心" && unreadCount > 0 && (
-                    <Badge variant="destructive" className="ml-auto h-5 min-w-5 px-1.5">
+                    <Badge
+                      variant="destructive"
+                      className="ml-auto h-5 min-w-5 px-1.5"
+                    >
                       {unreadCount}
                     </Badge>
                   )}
@@ -182,7 +181,8 @@ export default function MainLayout({ children }: MainLayoutProps) {
 
           <div className="flex-1">
             <h1 className="text-lg font-semibold text-foreground">
-              {navigation.find(item => item.href === location.pathname)?.name || '页面'}
+              {navigation.find((item) => item.href === location.pathname)
+                ?.name || "页面"}
             </h1>
           </div>
 
@@ -220,7 +220,10 @@ export default function MainLayout({ children }: MainLayoutProps) {
                   设置
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
-                <DropdownMenuItem className="text-destructive" onClick={handleLogout}>
+                <DropdownMenuItem
+                  className="text-destructive"
+                  onClick={handleLogout}
+                >
                   <LogOut className="mr-2 h-4 w-4" />
                   退出登录
                 </DropdownMenuItem>
@@ -231,7 +234,7 @@ export default function MainLayout({ children }: MainLayoutProps) {
 
         {/* Page content */}
         <main className="p-4 lg:p-6">
-          {children}
+          <Outlet />
         </main>
       </div>
     </div>

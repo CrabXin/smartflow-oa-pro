@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   ChevronRight,
   ChevronDown,
@@ -20,8 +20,14 @@ import {
   apiGetDepartments, 
   apiGetDepartmentMembers,
   apiCreateDepartment,
+  apiDeleteDepartment,
   apiGetUsers,
+  apiCreateUser,
+  apiUpdateUser,
+  apiDeleteUser,
+  apiGetRoles,
   type DepartmentCreatePayload,
+  type UserCreatePayload,
 } from "@/lib/api";
 import {
   DropdownMenu,
@@ -149,12 +155,22 @@ export default function OrganizationStructure() {
   const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
   const [selectedDepartment, setSelectedDepartment] = useState<Department | null>(null);
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
+  const [isAddMemberDialogOpen, setIsAddMemberDialogOpen] = useState(false);
   const [formData, setFormData] = useState<{
     name: string;
     managerId: string;
   }>({
     name: "",
     managerId: "",
+  });
+  const [memberFormData, setMemberFormData] = useState<{
+    name: string;
+    email: string;
+    role: string;
+  }>({
+    name: "",
+    email: "",
+    role: "",
   });
   const queryClient = useQueryClient();
 
@@ -169,6 +185,23 @@ export default function OrganizationStructure() {
     queryFn: () => apiGetUsers({ page: 1, limit: 100 }),
   });
 
+  // 获取角色列表用于添加成员
+  const { data: roles = [] } = useQuery({
+    queryKey: ["roles"],
+    queryFn: apiGetRoles,
+  });
+
+  // 初始化成员表单的默认角色
+  useEffect(() => {
+    if (roles.length > 0) {
+      setMemberFormData(prev => {
+        if (!prev.role) {
+          return { ...prev, role: roles[0].id };
+        }
+        return prev;
+      });
+    }
+  }, [roles]);
 
   const handleToggle = (id: string) => {
     const newExpanded = new Set(expandedIds);
@@ -226,18 +259,106 @@ export default function OrganizationStructure() {
     toast.info("编辑部门功能 - 请对接 PUT /api/departments/:id");
   };
 
-  const handleDeleteDepartment = () => {
-    // TODO: 调用 DELETE /api/departments/:id 删除部门
-    toast.info("删除部门功能 - 请对接 DELETE /api/departments/:id");
-  };
+  // 删除部门的mutation
+  const deleteDepartmentMutation = useMutation({
+    mutationFn: (id: string) => apiDeleteDepartment(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["departments"] });
+      setSelectedDepartment(null);
+      toast.success("部门已删除");
+    },
+    onError: (error: unknown) => {
+      toast.error((error as Error).message || "删除部门失败");
+    },
+  });
 
-  const handleAddMember = () => {
-    // TODO: 调用 POST /api/users 创建用户并添加到当前部门
+  const handleDeleteDepartment = () => {
     if (!selectedDepartment) {
       toast.warning("请先选择一个部门");
       return;
     }
-    toast.info(`添加成员功能 - 请对接 POST /api/users，部门：${selectedDepartment.name}`);
+    if (confirm(`确定要删除部门 "${selectedDepartment.name}" 吗？此操作不可恢复。`)) {
+      deleteDepartmentMutation.mutate(selectedDepartment.id);
+    }
+  };
+
+  // 创建成员的mutation
+  const createMemberMutation = useMutation({
+    mutationFn: (payload: UserCreatePayload) => apiCreateUser(payload),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["department-members"] });
+      queryClient.invalidateQueries({ queryKey: ["departments"] });
+      setIsAddMemberDialogOpen(false);
+      resetMemberForm();
+      toast.success("成员添加成功");
+    },
+    onError: (error: unknown) => {
+      toast.error((error as Error).message || "添加成员失败");
+    },
+  });
+
+  // 删除成员的mutation（通过更新用户部门为空来移除）
+  const removeMemberMutation = useMutation({
+    mutationFn: (userId: string) => apiUpdateUser(userId, { department: "" }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["department-members"] });
+      queryClient.invalidateQueries({ queryKey: ["departments"] });
+      toast.success("成员已移除");
+    },
+    onError: (error: unknown) => {
+      toast.error((error as Error).message || "移除成员失败");
+    },
+  });
+
+  const handleAddMember = () => {
+    if (!selectedDepartment) {
+      toast.warning("请先选择一个部门");
+      return;
+    }
+    // 设置默认角色
+    if (roles.length > 0) {
+      setMemberFormData(prev => ({ ...prev, role: roles[0].id }));
+    }
+    setIsAddMemberDialogOpen(true);
+  };
+
+  const handleSubmitAddMember = () => {
+    if (!selectedDepartment) {
+      toast.warning("请先选择一个部门");
+      return;
+    }
+    if (!memberFormData.name.trim()) {
+      toast.error("请输入成员姓名");
+      return;
+    }
+    if (!memberFormData.email.trim()) {
+      toast.error("请输入成员邮箱");
+      return;
+    }
+    if (!memberFormData.role) {
+      toast.error("请选择成员角色");
+      return;
+    }
+    createMemberMutation.mutate({
+      name: memberFormData.name.trim(),
+      email: memberFormData.email.trim(),
+      department: selectedDepartment.name,
+      role: memberFormData.role as "admin" | "manager" | "employee",
+    });
+  };
+
+  const handleRemoveMember = (memberId: string, memberName: string) => {
+    if (confirm(`确定要将 ${memberName} 从该部门移除吗？`)) {
+      removeMemberMutation.mutate(memberId);
+    }
+  };
+
+  const resetMemberForm = () => {
+    setMemberFormData({
+      name: "",
+      email: "",
+      role: roles.length > 0 ? roles[0].id : "",
+    });
   };
 
   const { data: selectedMembers = [], refetch: refetchMembers } = useQuery<User[]>({
@@ -331,9 +452,10 @@ export default function OrganizationStructure() {
                 <DropdownMenuItem 
                   className="text-destructive"
                   onClick={handleDeleteDepartment}
+                  disabled={deleteDepartmentMutation.isPending}
                 >
                   <Trash2 className="mr-2 h-4 w-4" />
-                  删除部门
+                  {deleteDepartmentMutation.isPending ? "删除中..." : "删除部门"}
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
@@ -399,7 +521,7 @@ export default function OrganizationStructure() {
                     {selectedMembers.map((member) => (
                       <div
                         key={member.id}
-                        className="flex items-center gap-3 rounded-lg border border-border p-3"
+                        className="flex items-center gap-3 rounded-lg border border-border p-3 group"
                       >
                         <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10 text-primary text-sm font-medium">
                           {member.avatar}
@@ -408,12 +530,23 @@ export default function OrganizationStructure() {
                           <p className="font-medium text-foreground truncate">{member.name}</p>
                           <p className="text-sm text-muted-foreground truncate">{member.email}</p>
                         </div>
-                        <Badge 
-                          variant={member.status === 'active' ? 'default' : 'outline'}
-                          className="flex-shrink-0"
-                        >
-                          {member.status === 'active' ? '在职' : '离职'}
-                        </Badge>
+                        <div className="flex items-center gap-2">
+                          <Badge 
+                            variant={member.status === 'active' ? 'default' : 'outline'}
+                            className="flex-shrink-0"
+                          >
+                            {member.status === 'active' ? '在职' : '离职'}
+                          </Badge>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8 opacity-0 group-hover:opacity-100 transition-opacity"
+                            onClick={() => handleRemoveMember(member.id, member.name)}
+                            disabled={removeMemberMutation.isPending}
+                          >
+                            <Trash2 className="h-4 w-4 text-destructive" />
+                          </Button>
+                        </div>
                       </div>
                     ))}
                   </div>
@@ -492,6 +625,82 @@ export default function OrganizationStructure() {
               disabled={createDepartmentMutation.isPending}
             >
               {createDepartmentMutation.isPending ? "创建中..." : "创建"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* 添加成员对话框 */}
+      <Dialog 
+        open={isAddMemberDialogOpen} 
+        onOpenChange={(open) => {
+          setIsAddMemberDialogOpen(open);
+          if (!open) {
+            resetMemberForm();
+          }
+        }}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>添加部门成员</DialogTitle>
+            <DialogDescription>
+              填写以下信息创建新成员并添加到 {selectedDepartment?.name}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            <div className="grid gap-2">
+              <Label htmlFor="member-name">姓名 *</Label>
+              <Input
+                id="member-name"
+                value={memberFormData.name}
+                onChange={(e) => setMemberFormData({ ...memberFormData, name: e.target.value })}
+                placeholder="请输入成员姓名"
+              />
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="member-email">邮箱 *</Label>
+              <Input
+                id="member-email"
+                type="email"
+                value={memberFormData.email}
+                onChange={(e) => setMemberFormData({ ...memberFormData, email: e.target.value })}
+                placeholder="请输入成员邮箱"
+              />
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="member-role">角色 *</Label>
+              <Select
+                value={memberFormData.role}
+                onValueChange={(value) => setMemberFormData({ ...memberFormData, role: value })}
+              >
+                <SelectTrigger id="member-role">
+                  <SelectValue placeholder="选择角色" />
+                </SelectTrigger>
+                <SelectContent>
+                  {roles.map((role) => (
+                    <SelectItem key={role.id} value={role.id}>
+                      {role.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setIsAddMemberDialogOpen(false);
+                resetMemberForm();
+              }}
+            >
+              取消
+            </Button>
+            <Button
+              onClick={handleSubmitAddMember}
+              disabled={createMemberMutation.isPending}
+            >
+              {createMemberMutation.isPending ? "添加中..." : "添加"}
             </Button>
           </DialogFooter>
         </DialogContent>

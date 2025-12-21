@@ -1,12 +1,7 @@
-import type { ReactNode } from "react";
-import { Navigate, useLocation } from "react-router-dom";
+import { Navigate, useLocation, Outlet } from "react-router-dom";
 import { useAuth } from "@/auth/AuthContext";
 
-interface AuthGuardProps {
-  children: ReactNode;
-}
-
-export const AuthGuard = ({ children }: AuthGuardProps) => {
+export const AuthGuard = () => {
   const { user, loading } = useAuth();
   const location = useLocation();
 
@@ -25,7 +20,7 @@ export const AuthGuard = ({ children }: AuthGuardProps) => {
     );
   }
 
-  return <>{children}</>;
+  return <Outlet />;
 };
 
 

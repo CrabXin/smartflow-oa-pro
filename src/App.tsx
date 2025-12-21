@@ -26,67 +26,21 @@ const App = () => (
         <AuthProvider>
           <Routes>
             <Route path="/login" element={<Login />} />
-            <Route
-              path="/"
-              element={
-                <AuthGuard>
-                  <MainLayout>
-                    <Dashboard />
-                  </MainLayout>
-                </AuthGuard>
-              }
-            />
-            <Route
-              path="/users"
-              element={
-                <AuthGuard>
-                  <MainLayout>
-                    <UserManagement />
-                  </MainLayout>
-                </AuthGuard>
-              }
-            />
-            <Route
-              path="/organization"
-              element={
-                <AuthGuard>
-                  <MainLayout>
-                    <OrganizationStructure />
-                  </MainLayout>
-                </AuthGuard>
-              }
-            />
-            <Route
-              path="/workflow"
-              element={
-                <AuthGuard>
-                  <MainLayout>
-                    <WorkflowApproval />
-                  </MainLayout>
-                </AuthGuard>
-              }
-            />
-            <Route
-              path="/meetings"
-              element={
-                <AuthGuard>
-                  <MainLayout>
-                    <MeetingBooking />
-                  </MainLayout>
-                </AuthGuard>
-              }
-            />
-            <Route
-              path="/notifications"
-              element={
-                <AuthGuard>
-                  <MainLayout>
-                    <NotificationCenter />
-                  </MainLayout>
-                </AuthGuard>
-              }
-            />
-            {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
+
+            <Route element={<AuthGuard />}>
+              <Route element={<MainLayout />}>
+                <Route path="/" element={<Dashboard />} />
+                <Route path="/users" element={<UserManagement />} />
+                <Route
+                  path="/organization"
+                  element={<OrganizationStructure />}
+                />
+                <Route path="/workflow" element={<WorkflowApproval />} />
+                <Route path="/meetings" element={<MeetingBooking />} />
+                <Route path="/notifications" element={<NotificationCenter />} />
+              </Route>
+            </Route>
+
             <Route path="*" element={<NotFound />} />
           </Routes>
         </AuthProvider>
