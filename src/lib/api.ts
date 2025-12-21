@@ -365,7 +365,6 @@ export interface UserCreatePayload {
   email: string;
   department: string;
   role: UiUser["role"];
-  phone: string;
 }
 
 export type UserUpdatePayload = Partial<UserCreatePayload> & {
@@ -418,6 +417,19 @@ export async function apiGetDepartments(): Promise<UiDepartment[]> {
     memberCount: 0,
     children: [],
   }));
+}
+
+// ===================== 角色管理 =====================
+
+export interface Role {
+  id: string;
+  name: string;
+  description?: string;
+}
+
+export async function apiGetRoles(): Promise<Role[]> {
+  const roles = await requestResult<Role[]>("/api/roles");
+  return roles;
 }
 
 export async function apiGetDepartmentMembers(

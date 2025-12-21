@@ -8,7 +8,8 @@ import {
   Settings,
   Megaphone,
   Trash2,
-  ExternalLink
+  ExternalLink,
+  RefreshCw
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -54,7 +55,7 @@ export default function NotificationCenter() {
   const [activeTab, setActiveTab] = useState('all');
   const [page, setPage] = useState(1);
 
-  const { data: notificationsPage, isLoading } = useQuery({
+  const { data: notificationsPage, isLoading, refetch: refetchNotifications } = useQuery({
     queryKey: ['notifications', { 
       type: activeTab !== 'all' && activeTab !== 'unread' ? activeTab : undefined,
       isRead: activeTab === 'unread' ? false : undefined,
@@ -70,6 +71,11 @@ export default function NotificationCenter() {
       limit: 50,
     }),
   });
+
+  const handleRefresh = async () => {
+    await refetchNotifications();
+    toast.success('数据已刷新');
+  };
 
   const notifications = notificationsPage?.notifications ?? [];
   const unreadCount = notificationsPage?.unreadCount ?? 0;
@@ -130,15 +136,26 @@ export default function NotificationCenter() {
             共 {unreadCount} 条未读消息
           </p>
         </div>
-        <Button 
-          variant="outline" 
-          className="gap-2"
-          onClick={handleMarkAllAsRead}
-          disabled={unreadCount === 0 || markAllAsReadMutation.isPending}
-        >
-          <CheckCheck className="h-4 w-4" />
-          {markAllAsReadMutation.isPending ? '处理中...' : '全部标记已读'}
-        </Button>
+        <div className="flex gap-2">
+          <Button 
+            variant="outline" 
+            className="gap-2"
+            onClick={handleRefresh}
+            disabled={isLoading}
+          >
+            <RefreshCw className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
+            刷新
+          </Button>
+          <Button 
+            variant="outline" 
+            className="gap-2"
+            onClick={handleMarkAllAsRead}
+            disabled={unreadCount === 0 || markAllAsReadMutation.isPending}
+          >
+            <CheckCheck className="h-4 w-4" />
+            {markAllAsReadMutation.isPending ? '处理中...' : '全部标记已读'}
+          </Button>
+        </div>
       </div>
 
       {/* Stats */}

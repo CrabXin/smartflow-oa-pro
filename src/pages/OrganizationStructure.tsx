@@ -8,20 +8,44 @@ import {
   Edit,
   Trash2,
   MoreHorizontal,
+  RefreshCw,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import type { Department, User } from "@/data/mockData";
-import { useQuery } from "@tanstack/react-query";
-import { apiGetDepartments, apiGetDepartmentMembers } from "@/lib/api";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { 
+  apiGetDepartments, 
+  apiGetDepartmentMembers,
+  apiCreateDepartment,
+  apiGetUsers,
+  type DepartmentCreatePayload,
+} from "@/lib/api";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { toast } from "sonner";
 
 /**
@@ -124,10 +148,27 @@ function DepartmentNode({
 export default function OrganizationStructure() {
   const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
   const [selectedDepartment, setSelectedDepartment] = useState<Department | null>(null);
+  const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
+  const [formData, setFormData] = useState<{
+    name: string;
+    parentId: string;
+    managerId: string;
+  }>({
+    name: "",
+    parentId: "__none__",
+    managerId: "",
+  });
+  const queryClient = useQueryClient();
 
-  const { data: departments, isLoading } = useQuery<Department[]>({
+  const { data: departments, isLoading, refetch: refetchDepartments } = useQuery<Department[]>({
     queryKey: ["departments"],
     queryFn: apiGetDepartments,
+  });
+
+  // 获取用户列表用于选择部门负责人
+  const { data: usersPage } = useQuery({
+    queryKey: ["users", { page: 1, limit: 100 }],
+    queryFn: () => apiGetUsers({ page: 1, limit: 100 }),
   });
 
   useEffect(() => {
@@ -147,9 +188,46 @@ export default function OrganizationStructure() {
     setExpandedIds(newExpanded);
   };
 
+  // 创建部门的mutation
+  const createDepartmentMutation = useMutation({
+    mutationFn: (payload: DepartmentCreatePayload) => apiCreateDepartment(payload),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["departments"] });
+      setIsAddDialogOpen(false);
+      resetForm();
+      toast.success("部门创建成功");
+    },
+    onError: (error: unknown) => {
+      toast.error((error as Error).message || "创建部门失败");
+    },
+  });
+
   const handleAddDepartment = () => {
-    // TODO: 调用 POST /api/departments 创建部门
-    toast.info("添加部门功能 - 请对接 POST /api/departments");
+    setIsAddDialogOpen(true);
+  };
+
+  const handleSubmitAddDepartment = () => {
+    if (!formData.name.trim()) {
+      toast.error("请输入部门名称");
+      return;
+    }
+    if (!formData.managerId) {
+      toast.error("请选择部门负责人");
+      return;
+    }
+    createDepartmentMutation.mutate({
+      name: formData.name.trim(),
+      parentId: formData.parentId === "__none__" ? undefined : formData.parentId,
+      managerId: formData.managerId,
+    });
+  };
+
+  const resetForm = () => {
+    setFormData({
+      name: "",
+      parentId: "__none__",
+      managerId: "",
+    });
   };
 
   const handleEditDepartment = () => {
@@ -162,7 +240,16 @@ export default function OrganizationStructure() {
     toast.info("删除部门功能 - 请对接 DELETE /api/departments/:id");
   };
 
-  const { data: selectedMembers = [] } = useQuery<User[]>({
+  const handleAddMember = () => {
+    // TODO: 调用 POST /api/users 创建用户并添加到当前部门
+    if (!selectedDepartment) {
+      toast.warning("请先选择一个部门");
+      return;
+    }
+    toast.info(`添加成员功能 - 请对接 POST /api/users，部门：${selectedDepartment.name}`);
+  };
+
+  const { data: selectedMembers = [], refetch: refetchMembers } = useQuery<User[]>({
     queryKey: ["department-members", selectedDepartment?.id],
     queryFn: () =>
       selectedDepartment
@@ -170,6 +257,14 @@ export default function OrganizationStructure() {
         : Promise.resolve([]),
     enabled: !!selectedDepartment,
   });
+
+  const handleRefresh = async () => {
+    await refetchDepartments();
+    if (selectedDepartment) {
+      await refetchMembers();
+    }
+    toast.success('数据已刷新');
+  };
 
   const manager = selectedMembers.length > 0 ? selectedMembers[0] : null;
 
@@ -179,10 +274,16 @@ export default function OrganizationStructure() {
       <Card className="lg:col-span-1">
         <CardHeader className="flex flex-row items-center justify-between">
           <CardTitle className="text-base">组织架构</CardTitle>
-          <Button size="sm" variant="outline" className="gap-1" onClick={handleAddDepartment}>
-            <Plus className="h-4 w-4" />
-            添加
-          </Button>
+          <div className="flex gap-2">
+            <Button size="sm" variant="outline" className="gap-1" onClick={handleRefresh} disabled={isLoading}>
+              <RefreshCw className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
+              刷新
+            </Button>
+            <Button size="sm" variant="outline" className="gap-1" onClick={handleAddDepartment}>
+              <Plus className="h-4 w-4" />
+              添加部门
+            </Button>
+          </div>
         </CardHeader>
         <CardContent className="p-2">
           {isLoading ? (
@@ -232,9 +333,9 @@ export default function OrganizationStructure() {
                   <Edit className="mr-2 h-4 w-4" />
                   编辑部门
                 </DropdownMenuItem>
-                <DropdownMenuItem onClick={handleAddDepartment}>
-                  <Plus className="mr-2 h-4 w-4" />
-                  添加子部门
+                <DropdownMenuItem onClick={handleAddMember}>
+                  <Users className="mr-2 h-4 w-4" />
+                  添加成员
                 </DropdownMenuItem>
                 <DropdownMenuItem 
                   className="text-destructive"
@@ -336,6 +437,93 @@ export default function OrganizationStructure() {
           )}
         </CardContent>
       </Card>
+
+      {/* 添加部门对话框 */}
+      <Dialog 
+        open={isAddDialogOpen} 
+        onOpenChange={(open) => {
+          setIsAddDialogOpen(open);
+          if (!open) {
+            resetForm();
+          }
+        }}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>添加新部门</DialogTitle>
+            <DialogDescription>
+              填写以下信息创建新部门
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            <div className="grid gap-2">
+              <Label htmlFor="dept-name">部门名称 *</Label>
+              <Input
+                id="dept-name"
+                value={formData.name}
+                onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                placeholder="请输入部门名称"
+              />
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="dept-parent">上级部门（可选）</Label>
+              <Select
+                value={formData.parentId}
+                onValueChange={(value) => setFormData({ ...formData, parentId: value })}
+              >
+                <SelectTrigger id="dept-parent">
+                  <SelectValue placeholder="选择上级部门（留空则为顶级部门）" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="__none__">无（顶级部门）</SelectItem>
+                  {departments?.map((dept) => (
+                    <SelectItem key={dept.id} value={dept.id}>
+                      {dept.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="dept-manager">部门负责人 *</Label>
+              <Select
+                value={formData.managerId}
+                onValueChange={(value) => setFormData({ ...formData, managerId: value })}
+              >
+                <SelectTrigger id="dept-manager">
+                  <SelectValue placeholder="选择部门负责人" />
+                </SelectTrigger>
+                <SelectContent>
+                  {usersPage?.users
+                    .filter((user) => user.status === "active")
+                    .map((user) => (
+                      <SelectItem key={user.id} value={user.id}>
+                        {user.name} ({user.email})
+                      </SelectItem>
+                    ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setIsAddDialogOpen(false);
+                resetForm();
+              }}
+            >
+              取消
+            </Button>
+            <Button
+              onClick={handleSubmitAddDepartment}
+              disabled={createDepartmentMutation.isPending}
+            >
+              {createDepartmentMutation.isPending ? "创建中..." : "创建"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

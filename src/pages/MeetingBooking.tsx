@@ -8,7 +8,8 @@ import {
   Monitor,
   Trash2,
   ChevronLeft,
-  ChevronRight
+  ChevronRight,
+  RefreshCw
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -124,7 +125,7 @@ export default function MeetingBooking() {
   const weekDates = getWeekDates();
 
   // Fetch meeting rooms
-  const { data: meetingRooms = [] } = useQuery({
+  const { data: meetingRooms = [], refetch: refetchRooms } = useQuery({
     queryKey: ['meeting-rooms'],
     queryFn: apiGetMeetingRooms,
   });
@@ -138,10 +139,15 @@ export default function MeetingBooking() {
     };
   }, [currentWeekStart]);
 
-  const { data: meetings = [] } = useQuery({
+  const { data: meetings = [], refetch: refetchMeetings, isLoading: isLoadingMeetings } = useQuery({
     queryKey: ['meetings', { date: weekDateRange.start }],
     queryFn: () => apiGetMeetings({ date: weekDateRange.start }),
   });
+
+  const handleRefresh = async () => {
+    await Promise.all([refetchRooms(), refetchMeetings()]);
+    toast.success('数据已刷新');
+  };
 
   const navigateWeek = (direction: 'prev' | 'next') => {
     const newStart = new Date(currentWeekStart);
@@ -254,7 +260,12 @@ export default function MeetingBooking() {
             预约会议室，管理会议日程
           </p>
         </div>
-        <Dialog open={isBookDialogOpen} onOpenChange={setIsBookDialogOpen}>
+        <div className="flex gap-2">
+          <Button variant="outline" className="gap-2" onClick={handleRefresh} disabled={isLoadingMeetings}>
+            <RefreshCw className={`h-4 w-4 ${isLoadingMeetings ? 'animate-spin' : ''}`} />
+            刷新
+          </Button>
+          <Dialog open={isBookDialogOpen} onOpenChange={setIsBookDialogOpen}>
           <DialogTrigger asChild>
             <Button className="gap-2">
               <Plus className="h-4 w-4" />
@@ -369,6 +380,7 @@ export default function MeetingBooking() {
             </DialogFooter>
           </DialogContent>
         </Dialog>
+        </div>
       </div>
 
       <div className="grid gap-6 lg:grid-cols-4">

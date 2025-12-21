@@ -9,6 +9,7 @@ import {
   CheckCircle2,
   XCircle,
   ArrowRight,
+  RefreshCw,
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -27,6 +28,7 @@ import {
   type DashboardStats,
   type DashboardTask,
 } from '@/lib/api';
+import { toast } from 'sonner';
 
 /**
  * API 接口:
@@ -81,32 +83,37 @@ export default function Dashboard() {
     enabled: !!authUser,
   });
 
-  useEffect(() => {
-    const load = async () => {
-      try {
-        setLoading(true);
-        const todayStr = new Date().toISOString().split('T')[0];
-        const [statsRes, workflowsRes, meetingsRes, notificationsRes] = await Promise.all([
-          apiGetDashboardStats(),
-          apiGetDashboardRecentWorkflows(5),
-          apiGetTodayMeetings(todayStr),
-          apiGetDashboardRecentNotifications(3),
-        ]);
-        setStats(statsRes);
-        setWorkflows(workflowsRes);
-        setTodayMeetings(meetingsRes);
-        setRecentNotifications(notificationsRes);
-        setError(null);
-      } catch (e) {
-        console.error(e);
-        setError((e as Error).message || '加载仪表盘数据失败');
-      } finally {
-        setLoading(false);
-      }
-    };
+  const loadData = async () => {
+    try {
+      setLoading(true);
+      const todayStr = new Date().toISOString().split('T')[0];
+      const [statsRes, workflowsRes, meetingsRes, notificationsRes] = await Promise.all([
+        apiGetDashboardStats(),
+        apiGetDashboardRecentWorkflows(5),
+        apiGetTodayMeetings(todayStr),
+        apiGetDashboardRecentNotifications(3),
+      ]);
+      setStats(statsRes);
+      setWorkflows(workflowsRes);
+      setTodayMeetings(meetingsRes);
+      setRecentNotifications(notificationsRes);
+      setError(null);
+    } catch (e) {
+      console.error(e);
+      setError((e as Error).message || '加载仪表盘数据失败');
+    } finally {
+      setLoading(false);
+    }
+  };
 
-    load();
+  useEffect(() => {
+    loadData();
   }, []);
+
+  const handleRefresh = async () => {
+    await loadData();
+    toast.success('数据已刷新');
+  };
 
   // DashboardTask 不包含 status，所以显示所有返回的流程
   const pendingWorkflows = workflows;
@@ -155,20 +162,28 @@ export default function Dashboard() {
     <div className="space-y-6">
       {/* Welcome section */}
       <div className="rounded-xl bg-gradient-to-r from-primary/20 via-chart-1/10 to-chart-2/10 p-6">
-        <h2 className="text-2xl font-bold text-foreground">
-          早上好，{currentUser?.name ?? authUser?.name ?? '用户'}！
-        </h2>
-        <p className="mt-1 text-muted-foreground">
-          今天是 {dateText}，{weekdayText}。您有 {stats.pendingApprovals} 个待审批任务。
-        </p>
-        {loading && (
-          <p className="mt-1 text-xs text-muted-foreground">正在加载最新数据...</p>
-        )}
-        {error && (
-          <p className="mt-1 text-xs text-destructive">
-            {error}
-          </p>
-        )}
+        <div className="flex items-start justify-between">
+          <div className="flex-1">
+            <h2 className="text-2xl font-bold text-foreground">
+              早上好，{currentUser?.name ?? authUser?.name ?? '用户'}！
+            </h2>
+            <p className="mt-1 text-muted-foreground">
+              今天是 {dateText}，{weekdayText}。您有 {stats.pendingApprovals} 个待审批任务。
+            </p>
+            {loading && (
+              <p className="mt-1 text-xs text-muted-foreground">正在加载最新数据...</p>
+            )}
+            {error && (
+              <p className="mt-1 text-xs text-destructive">
+                {error}
+              </p>
+            )}
+          </div>
+          <Button variant="outline" size="sm" className="gap-2" onClick={handleRefresh} disabled={loading}>
+            <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
+            刷新
+          </Button>
+        </div>
       </div>
 
       {/* Stats cards */}

@@ -13,7 +13,8 @@ import {
   ShoppingCart,
   Eye,
   Check,
-  X as XIcon
+  X as XIcon,
+  RefreshCw
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -117,7 +118,7 @@ export default function WorkflowApproval() {
   });
 
   // Fetch workflows based on tab
-  const { data: pendingWorkflowsPage } = useQuery({
+  const { data: pendingWorkflowsPage, refetch: refetchPending } = useQuery({
     queryKey: ['workflows', 'pending', { type: typeFilter !== 'all' ? typeFilter : undefined }],
     queryFn: () => apiGetPendingWorkflows({ 
       type: typeFilter !== 'all' ? (typeFilter as 'leave' | 'expense' | 'procurement' | 'travel') : undefined,
@@ -127,7 +128,7 @@ export default function WorkflowApproval() {
     enabled: activeTab === 'pending',
   });
 
-  const { data: myWorkflowsPage } = useQuery({
+  const { data: myWorkflowsPage, refetch: refetchMy } = useQuery({
     queryKey: ['workflows', 'my', { type: typeFilter !== 'all' ? typeFilter : undefined }],
     queryFn: () => apiGetMyWorkflows({ 
       type: typeFilter !== 'all' ? (typeFilter as 'leave' | 'expense' | 'procurement' | 'travel') : undefined,
@@ -136,6 +137,18 @@ export default function WorkflowApproval() {
     }),
     enabled: activeTab === 'my',
   });
+
+  const handleRefresh = async () => {
+    if (activeTab === 'pending') {
+      await refetchPending();
+    } else if (activeTab === 'my') {
+      await refetchMy();
+    } else if (activeTab === 'all') {
+      // 全部流程标签页时，同时刷新两个查询
+      await Promise.all([refetchPending(), refetchMy()]);
+    }
+    toast.success('数据已刷新');
+  };
 
   const workflows = activeTab === 'pending' 
     ? (pendingWorkflowsPage?.workflows ?? [])
@@ -243,7 +256,12 @@ export default function WorkflowApproval() {
             管理和审批各类流程申请
           </p>
         </div>
-        <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
+        <div className="flex gap-2">
+          <Button variant="outline" className="gap-2" onClick={handleRefresh}>
+            <RefreshCw className="h-4 w-4" />
+            刷新
+          </Button>
+          <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
           <DialogTrigger asChild>
             <Button className="gap-2">
               <Plus className="h-4 w-4" />
@@ -339,6 +357,7 @@ export default function WorkflowApproval() {
             </DialogFooter>
           </DialogContent>
         </Dialog>
+        </div>
       </div>
 
       {/* Tabs */}

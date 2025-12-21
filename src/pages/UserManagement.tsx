@@ -7,7 +7,8 @@ import {
   Trash2, 
   UserCheck,
   UserX,
-  Filter
+  Filter,
+  RefreshCw
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -53,6 +54,8 @@ import {
   apiCreateUser, 
   apiUpdateUser, 
   apiDeleteUser,
+  apiGetDepartments,
+  apiGetRoles,
   type UserCreatePayload,
   type UserUpdatePayload,
 } from '@/lib/api';
@@ -76,14 +79,6 @@ import { toast } from 'sonner';
  * 返回数据: { success: boolean }
  */
 
-const roleMap: Record<string, string> = {
-  admin: '管理员',
-  manager: '部门经理',
-  employee: '普通员工',
-};
-
-const departments = ['全部', '技术部', '人事部', '市场部', '财务部'];
-
 export default function UserManagement() {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedDepartment, setSelectedDepartment] = useState('全部');
@@ -96,12 +91,31 @@ export default function UserManagement() {
   const [formData, setFormData] = useState({
     name: '',
     email: '',
-    phone: '',
     department: '',
     role: 'employee' as 'admin' | 'manager' | 'employee',
   });
 
-  const { data: usersPage, isLoading } = useQuery({
+  // 获取部门和角色列表
+  const { data: departments = [] } = useQuery({
+    queryKey: ['departments'],
+    queryFn: apiGetDepartments,
+  });
+
+  const { data: roles = [] } = useQuery({
+    queryKey: ['roles'],
+    queryFn: apiGetRoles,
+  });
+
+  // 构建角色映射表
+  const roleMap: Record<string, string> = roles.reduce((acc, role) => {
+    acc[role.id] = role.name;
+    return acc;
+  }, {} as Record<string, string>);
+
+  // 构建部门选项列表（包含"全部"选项）
+  const departmentOptions = ['全部', ...departments.map(d => d.name)];
+
+  const { data: usersPage, isLoading, refetch: refetchUsers } = useQuery({
     queryKey: ['users', { search: searchQuery, department: selectedDepartment, page }],
     queryFn: () => apiGetUsers({
       search: searchQuery || undefined,
@@ -110,6 +124,11 @@ export default function UserManagement() {
       limit: 50,
     }),
   });
+
+  const handleRefresh = async () => {
+    await refetchUsers();
+    toast.success('数据已刷新');
+  };
 
   const users = usersPage?.users ?? [];
   const total = usersPage?.total ?? 0;
@@ -181,12 +200,13 @@ export default function UserManagement() {
   };
 
   const resetForm = () => {
+    // 使用第一个角色作为默认值，如果没有角色则使用 'employee'
+    const defaultRole = roles.length > 0 ? (roles[0].id as 'admin' | 'manager' | 'employee') : 'employee';
     setFormData({
       name: '',
       email: '',
-      phone: '',
       department: '',
-      role: 'employee',
+      role: defaultRole,
     });
   };
 
@@ -195,7 +215,6 @@ export default function UserManagement() {
     setFormData({
       name: user.name,
       email: user.email,
-      phone: user.phone,
       department: user.department,
       role: user.role,
     });
@@ -211,7 +230,12 @@ export default function UserManagement() {
             共 {total} 名用户
           </p>
         </div>
-        <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
+        <div className="flex gap-2">
+          <Button variant="outline" className="gap-2" onClick={handleRefresh} disabled={isLoading}>
+            <RefreshCw className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
+            刷新
+          </Button>
+          <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
           <DialogTrigger asChild>
             <Button className="gap-2">
               <Plus className="h-4 w-4" />
@@ -246,15 +270,6 @@ export default function UserManagement() {
                 />
               </div>
               <div className="grid gap-2">
-                <Label htmlFor="phone">电话</Label>
-                <Input
-                  id="phone"
-                  value={formData.phone}
-                  onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                  placeholder="请输入电话"
-                />
-              </div>
-              <div className="grid gap-2">
                 <Label>部门</Label>
                 <Select
                   value={formData.department}
@@ -264,8 +279,8 @@ export default function UserManagement() {
                     <SelectValue placeholder="选择部门" />
                   </SelectTrigger>
                   <SelectContent>
-                    {departments.filter(d => d !== '全部').map((dept) => (
-                      <SelectItem key={dept} value={dept}>{dept}</SelectItem>
+                    {departments.map((dept) => (
+                      <SelectItem key={dept.id} value={dept.name}>{dept.name}</SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
@@ -280,9 +295,9 @@ export default function UserManagement() {
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="admin">管理员</SelectItem>
-                    <SelectItem value="manager">部门经理</SelectItem>
-                    <SelectItem value="employee">普通员工</SelectItem>
+                    {roles.map((role) => (
+                      <SelectItem key={role.id} value={role.id}>{role.name}</SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
               </div>
@@ -297,6 +312,7 @@ export default function UserManagement() {
             </DialogFooter>
           </DialogContent>
         </Dialog>
+        </div>
       </div>
 
       {/* Filters */}
@@ -306,7 +322,7 @@ export default function UserManagement() {
             <div className="relative flex-1">
               <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
               <Input
-                placeholder="搜索用户姓名、邮箱或电话..."
+                placeholder="搜索用户姓名或邮箱..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 className="pl-9"
@@ -318,7 +334,7 @@ export default function UserManagement() {
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                {departments.map((dept) => (
+                {departmentOptions.map((dept) => (
                   <SelectItem key={dept} value={dept}>{dept}</SelectItem>
                 ))}
               </SelectContent>
@@ -336,22 +352,20 @@ export default function UserManagement() {
                 <TableHead>用户</TableHead>
                 <TableHead>部门</TableHead>
                 <TableHead>角色</TableHead>
-                <TableHead>电话</TableHead>
                 <TableHead>状态</TableHead>
-                <TableHead>加入时间</TableHead>
                 <TableHead className="w-12"></TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {isLoading ? (
                 <TableRow>
-                  <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
+                  <TableCell colSpan={5} className="text-center py-8 text-muted-foreground">
                     加载中...
                   </TableCell>
                 </TableRow>
               ) : users.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
+                  <TableCell colSpan={5} className="text-center py-8 text-muted-foreground">
                     暂无用户数据
                   </TableCell>
                 </TableRow>
@@ -375,13 +389,11 @@ export default function UserManagement() {
                   <TableCell>
                     <Badge variant="secondary">{roleMap[user.role]}</Badge>
                   </TableCell>
-                  <TableCell className="text-muted-foreground">{user.phone}</TableCell>
                   <TableCell>
                     <Badge variant={user.status === 'active' ? 'default' : 'outline'}>
                       {user.status === 'active' ? '在职' : '离职'}
                     </Badge>
                   </TableCell>
-                  <TableCell className="text-muted-foreground">{user.createdAt}</TableCell>
                   <TableCell>
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
@@ -454,14 +466,6 @@ export default function UserManagement() {
               />
             </div>
             <div className="grid gap-2">
-              <Label htmlFor="edit-phone">电话</Label>
-              <Input
-                id="edit-phone"
-                value={formData.phone}
-                onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-              />
-            </div>
-            <div className="grid gap-2">
               <Label>部门</Label>
               <Select
                 value={formData.department}
@@ -471,8 +475,8 @@ export default function UserManagement() {
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  {departments.filter(d => d !== '全部').map((dept) => (
-                    <SelectItem key={dept} value={dept}>{dept}</SelectItem>
+                  {departments.map((dept) => (
+                    <SelectItem key={dept.id} value={dept.name}>{dept.name}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>
@@ -487,9 +491,9 @@ export default function UserManagement() {
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="admin">管理员</SelectItem>
-                  <SelectItem value="manager">部门经理</SelectItem>
-                  <SelectItem value="employee">普通员工</SelectItem>
+                  {roles.map((role) => (
+                    <SelectItem key={role.id} value={role.id}>{role.name}</SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
             </div>
