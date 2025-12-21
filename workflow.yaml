@@ -1,0 +1,598 @@
+openapi: 3.0.1
+info:
+  title: SmartFlow OA API
+  description: |
+    SmartFlow OA 系统后端接口定义。
+    本文档基于当前前端项目的页面逻辑与 mock 数据整理而来，可用于 Swagger UI 展示与 Spring Boot 代码生成。
+  version: 1.0.0
+tags: []
+paths:
+  /api/workflows:
+    get:
+      summary: 获取流程定义列表
+      deprecated: false
+      description: ''
+      tags: []
+      parameters:
+        - name: page
+          in: query
+          description: ''
+          required: true
+          example: 1
+          schema:
+            type: integer
+        - name: limit
+          in: query
+          description: ''
+          required: true
+          example: 20
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResultIPageProcessDefinitionDTO'
+              example:
+                code: 0
+                msg: ''
+                data:
+                  records:
+                    - id: ''
+                      name: ''
+                      key: ''
+                      description: ''
+                  total: 0
+                  size: 0
+                  current: 0
+                  orders:
+                    - column: ''
+                      asc: false
+                  optimizeCountSql: false
+                  searchCount: false
+                  optimizeJoinOfCountSql: false
+                  maxLimit: 0
+                  countId: ''
+                  pages: 0
+      security:
+        - BearerAuth: []
+    post:
+      summary: 创建流程实例申请
+      deprecated: false
+      description: ''
+      tags: []
+      parameters:
+        - name: key
+          in: query
+          description: ''
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Result'
+                description: com.guhao.oahomework.common.Result
+              example:
+                code: 1
+                msg: 成功
+                data: {}
+      security:
+        - BearerAuth: []
+  /api/workflows/my:
+    get:
+      summary: 获取我发起的流程
+      deprecated: false
+      description: ''
+      tags: []
+      parameters:
+        - name: page
+          in: query
+          description: ''
+          required: true
+          example: 1
+          schema:
+            type: integer
+        - name: limit
+          in: query
+          description: ''
+          required: true
+          example: 20
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResultIPageSimpleProcessInstanceDTO'
+              example:
+                code: 0
+                msg: ''
+                data:
+                  records:
+                    - name: ''
+                      processDefinitionKey: ''
+                      status: ''
+                  total: 0
+                  size: 0
+                  current: 0
+                  orders:
+                    - column: ''
+                      asc: false
+                  optimizeCountSql: false
+                  searchCount: false
+                  optimizeJoinOfCountSql: false
+                  maxLimit: 0
+                  countId: ''
+                  pages: 0
+      security:
+        - BearerAuth: []
+  /api/workflows/pending:
+    get:
+      summary: 获取待我审批的任务
+      deprecated: false
+      description: ''
+      tags: []
+      parameters:
+        - name: type
+          in: query
+          description: ''
+          required: false
+          schema:
+            type: string
+        - name: page
+          in: query
+          description: ''
+          required: true
+          example: 1
+          schema:
+            type: integer
+        - name: limit
+          in: query
+          description: ''
+          required: true
+          example: 20
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResultIPageTaskDTO'
+              example:
+                code: 0
+                msg: ''
+                data:
+                  records:
+                    - id: ''
+                      name: ''
+                      description: ''
+                      assignee: ''
+                      owner: ''
+                      processInstanceId: ''
+                      processDefinitionId: ''
+                      taskDefinitionKey: ''
+                      createTime: ''
+                      dueDate: ''
+                      priority: 0
+                      category: ''
+                      formKey: ''
+                      parentTaskId: ''
+                  total: 0
+                  size: 0
+                  current: 0
+                  orders:
+                    - column: ''
+                      asc: false
+                  optimizeCountSql: false
+                  searchCount: false
+                  optimizeJoinOfCountSql: false
+                  maxLimit: 0
+                  countId: ''
+                  pages: 0
+          headers: {}
+      security:
+        - BearerAuth: []
+  /api/workflows/{id}/approve:
+    put:
+      summary: 审批通过
+      deprecated: false
+      description: ''
+      tags: []
+      parameters:
+        - name: id
+          in: path
+          description: ''
+          required: true
+          schema:
+            type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/WorkflowApproveRequest'
+              description: ''
+      responses:
+        '200':
+          description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResultString'
+              example:
+                code: 0
+                msg: ''
+                data: ''
+      security:
+        - BearerAuth: []
+  /api/workflows/{id}/reject:
+    put:
+      summary: 审批驳回
+      deprecated: false
+      description: ''
+      tags: []
+      parameters:
+        - name: id
+          in: path
+          description: ''
+          required: true
+          schema:
+            type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/WorkflowRejectRequest'
+              description: ''
+      responses:
+        '200':
+          description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResultString'
+              example:
+                code: 0
+                msg: ''
+                data: ''
+      security:
+        - BearerAuth: []
+components:
+  schemas:
+    ProcessDefinitionDTO:
+      type: object
+      properties:
+        id:
+          type: string
+          description: ''
+        name:
+          type: string
+          description: ''
+        key:
+          type: string
+          description: ''
+        description:
+          type: string
+          description: ''
+    TaskDTO:
+      type: object
+      properties:
+        id:
+          type: string
+          description: ''
+        name:
+          type: string
+          description: ''
+        description:
+          type: string
+          description: ''
+        assignee:
+          type: string
+          description: ''
+        owner:
+          type: string
+          description: ''
+        processInstanceId:
+          type: string
+          description: ''
+        processDefinitionId:
+          type: string
+          description: ''
+        taskDefinitionKey:
+          type: string
+          description: ''
+        createTime:
+          type: string
+          description: ''
+        dueDate:
+          type: string
+          description: ''
+        priority:
+          type: integer
+          description: ''
+        category:
+          type: string
+          description: ''
+        formKey:
+          type: string
+          description: ''
+        parentTaskId:
+          type: string
+          description: ''
+    OrderItem:
+      type: object
+      properties:
+        column:
+          type: string
+          description: 需要进行排序的字段
+        asc:
+          type: boolean
+          description: 是否正序排列，默认 true
+          default: true
+    IPageProcessDefinitionDTO:
+      type: object
+      properties:
+        records:
+          type: array
+          items:
+            $ref: '#/components/schemas/ProcessDefinitionDTO'
+            description: >-
+              com.guhao.oahomework.controller.WorkflowsController.ProcessDefinitionDTO
+          description: 查询数据列表
+          default: Collections.emptyList()
+        total:
+          type: integer
+          description: 总数
+          format: int64
+          default: 0
+        size:
+          type: integer
+          description: 每页显示条数，默认 10
+          format: int64
+          default: 10
+        current:
+          type: integer
+          description: 当前页
+          format: int64
+          default: 1
+        orders:
+          type: array
+          items:
+            $ref: '#/components/schemas/OrderItem'
+            description: com.baomidou.mybatisplus.core.metadata.OrderItem
+          description: 排序字段信息
+          default: new ArrayList<>()
+        optimizeCountSql:
+          type: boolean
+          description: 自动优化 COUNT SQL
+          default: true
+        searchCount:
+          type: boolean
+          description: 是否进行 count 查询
+          default: true
+        optimizeJoinOfCountSql:
+          type: boolean
+          description: '{@link #optimizeJoinOfCountSql()}'
+          default: true
+        maxLimit:
+          type: integer
+          description: 单页分页条数限制
+          format: int64
+        countId:
+          type: string
+          description: countId
+        pages:
+          type: integer
+          format: int64
+    ResultString:
+      type: object
+      properties:
+        code:
+          type: integer
+          description: ''
+        msg:
+          type: string
+          description: ''
+        data:
+          type: string
+          description: ''
+    ResultIPageProcessDefinitionDTO:
+      type: object
+      properties:
+        code:
+          type: integer
+          description: ''
+        msg:
+          type: string
+          description: ''
+        data:
+          $ref: '#/components/schemas/IPageProcessDefinitionDTO'
+          description: ''
+    SimpleProcessInstanceDTO:
+      type: object
+      properties:
+        name:
+          type: string
+          description: 流程定义名称
+        processDefinitionKey:
+          type: string
+          description: 流程定义key
+        status:
+          type: string
+          description: 状态：已完结/未完结
+    IPageSimpleProcessInstanceDTO:
+      type: object
+      properties:
+        records:
+          type: array
+          items:
+            $ref: '#/components/schemas/SimpleProcessInstanceDTO'
+            description: >-
+              com.guhao.oahomework.controller.WorkflowsController.SimpleProcessInstanceDTO
+          description: 查询数据列表
+          default: Collections.emptyList()
+        total:
+          type: integer
+          description: 总数
+          format: int64
+          default: 0
+        size:
+          type: integer
+          description: 每页显示条数，默认 10
+          format: int64
+          default: 10
+        current:
+          type: integer
+          description: 当前页
+          format: int64
+          default: 1
+        orders:
+          type: array
+          items:
+            $ref: '#/components/schemas/OrderItem'
+            description: com.baomidou.mybatisplus.core.metadata.OrderItem
+          description: 排序字段信息
+          default: new ArrayList<>()
+        optimizeCountSql:
+          type: boolean
+          description: 自动优化 COUNT SQL
+          default: true
+        searchCount:
+          type: boolean
+          description: 是否进行 count 查询
+          default: true
+        optimizeJoinOfCountSql:
+          type: boolean
+          description: '{@link #optimizeJoinOfCountSql()}'
+          default: true
+        maxLimit:
+          type: integer
+          description: 单页分页条数限制
+          format: int64
+        countId:
+          type: string
+          description: countId
+        pages:
+          type: integer
+          format: int64
+    IPageTaskDTO:
+      type: object
+      properties:
+        records:
+          type: array
+          items:
+            $ref: '#/components/schemas/TaskDTO'
+            description: com.guhao.oahomework.dto.TaskDTO
+          description: 查询数据列表
+          default: Collections.emptyList()
+        total:
+          type: integer
+          description: 总数
+          format: int64
+          default: 0
+        size:
+          type: integer
+          description: 每页显示条数，默认 10
+          format: int64
+          default: 10
+        current:
+          type: integer
+          description: 当前页
+          format: int64
+          default: 1
+        orders:
+          type: array
+          items:
+            $ref: '#/components/schemas/OrderItem'
+            description: com.baomidou.mybatisplus.core.metadata.OrderItem
+          description: 排序字段信息
+          default: new ArrayList<>()
+        optimizeCountSql:
+          type: boolean
+          description: 自动优化 COUNT SQL
+          default: true
+        searchCount:
+          type: boolean
+          description: 是否进行 count 查询
+          default: true
+        optimizeJoinOfCountSql:
+          type: boolean
+          description: '{@link #optimizeJoinOfCountSql()}'
+          default: true
+        maxLimit:
+          type: integer
+          description: 单页分页条数限制
+          format: int64
+        countId:
+          type: string
+          description: countId
+        pages:
+          type: integer
+          format: int64
+    Result:
+      type: object
+      properties:
+        code:
+          type: integer
+          description: ''
+        msg:
+          type: string
+          description: ''
+        data:
+          type: object
+          properties: {}
+          description: ''
+    ResultIPageSimpleProcessInstanceDTO:
+      type: object
+      properties:
+        code:
+          type: integer
+          description: ''
+        msg:
+          type: string
+          description: ''
+        data:
+          $ref: '#/components/schemas/IPageSimpleProcessInstanceDTO'
+          description: ''
+    ResultIPageTaskDTO:
+      type: object
+      properties:
+        code:
+          type: integer
+          description: ''
+        msg:
+          type: string
+          description: ''
+        data:
+          $ref: '#/components/schemas/IPageTaskDTO'
+          description: ''
+    WorkflowApproveRequest:
+      type: object
+      properties:
+        comment:
+          type: string
+          description: 审批意见，可选
+    WorkflowRejectRequest:
+      type: object
+      properties:
+        comment:
+          type: string
+          description: 驳回原因
+  responses: {}
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+servers: []
+security:
+  - BearerAuth: []

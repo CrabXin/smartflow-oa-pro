@@ -2,7 +2,6 @@ import { useState } from 'react';
 import { 
   Plus, 
   Search, 
-  Filter,
   Clock,
   CheckCircle2,
   XCircle,
@@ -48,9 +47,11 @@ import {
   apiCreateWorkflow, 
   apiApproveWorkflow, 
   apiRejectWorkflow,
+  apiGetProcessDefinitions,
   type WorkflowCreatePayload,
   type WorkflowApprovePayload,
   type WorkflowRejectPayload,
+  type ProcessDefinition,
 } from '@/lib/api';
 import { toast } from 'sonner';
 
@@ -101,27 +102,24 @@ export default function WorkflowApproval() {
   const { user: currentUser } = useAuth();
   const queryClient = useQueryClient();
   const [searchQuery, setSearchQuery] = useState('');
-  const [typeFilter, setTypeFilter] = useState('all');
   const [activeTab, setActiveTab] = useState('pending');
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [selectedWorkflow, setSelectedWorkflow] = useState<Workflow | null>(null);
   const [approvalComment, setApprovalComment] = useState('');
   
-  // Create form state
-  const [createForm, setCreateForm] = useState({
-    type: 'leave' as 'leave' | 'expense' | 'procurement' | 'travel',
-    title: '',
-    description: '',
-    amount: '',
-    startDate: '',
-    endDate: '',
+  // Create form state - 简化，只需要选择流程定义
+  const [selectedProcessDefinitionKey, setSelectedProcessDefinitionKey] = useState<string>('');
+
+  // 获取流程定义列表
+  const { data: processDefinitionsData } = useQuery({
+    queryKey: ['processDefinitions'],
+    queryFn: () => apiGetProcessDefinitions(1, 100),
   });
 
   // Fetch workflows based on tab
   const { data: pendingWorkflowsPage, refetch: refetchPending } = useQuery({
-    queryKey: ['workflows', 'pending', { type: typeFilter !== 'all' ? typeFilter : undefined }],
+    queryKey: ['workflows', 'pending'],
     queryFn: () => apiGetPendingWorkflows({ 
-      type: typeFilter !== 'all' ? (typeFilter as 'leave' | 'expense' | 'procurement' | 'travel') : undefined,
       page: 1,
       limit: 100,
     }),
@@ -129,9 +127,8 @@ export default function WorkflowApproval() {
   });
 
   const { data: myWorkflowsPage, refetch: refetchMy } = useQuery({
-    queryKey: ['workflows', 'my', { type: typeFilter !== 'all' ? typeFilter : undefined }],
+    queryKey: ['workflows', 'my'],
     queryFn: () => apiGetMyWorkflows({ 
-      type: typeFilter !== 'all' ? (typeFilter as 'leave' | 'expense' | 'procurement' | 'travel') : undefined,
       page: 1,
       limit: 100,
     }),
@@ -143,9 +140,6 @@ export default function WorkflowApproval() {
       await refetchPending();
     } else if (activeTab === 'my') {
       await refetchMy();
-    } else if (activeTab === 'all') {
-      // 全部流程标签页时，同时刷新两个查询
-      await Promise.all([refetchPending(), refetchMy()]);
     }
     toast.success('数据已刷新');
   };
@@ -157,9 +151,10 @@ export default function WorkflowApproval() {
   // Filter workflows by search query
   const filteredWorkflows = workflows.filter(w => {
     if (!searchQuery) return true;
-    return w.title.includes(searchQuery) || 
-           w.applicant.includes(searchQuery) ||
-           w.description.includes(searchQuery);
+    const query = searchQuery.toLowerCase();
+    return w.title.toLowerCase().includes(query) || 
+           (w.applicant && w.applicant.toLowerCase().includes(query)) ||
+           (w.description && w.description.toLowerCase().includes(query));
   });
 
   const createWorkflowMutation = useMutation({
@@ -167,14 +162,7 @@ export default function WorkflowApproval() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['workflows'] });
       setIsCreateDialogOpen(false);
-      setCreateForm({
-        type: 'leave',
-        title: '',
-        description: '',
-        amount: '',
-        startDate: '',
-        endDate: '',
-      });
+      setSelectedProcessDefinitionKey('');
       toast.success('申请提交成功');
     },
     onError: (error: unknown) => {
@@ -211,18 +199,13 @@ export default function WorkflowApproval() {
   });
 
   const handleCreate = () => {
-    if (!createForm.title || !createForm.description) {
-      toast.error('请填写标题和说明');
+    if (!selectedProcessDefinitionKey) {
+      toast.error('请选择要发起的流程类型');
       return;
     }
 
     const payload: WorkflowCreatePayload = {
-      type: createForm.type,
-      title: createForm.title,
-      description: createForm.description,
-      amount: createForm.amount ? Number(createForm.amount) : undefined,
-      startDate: createForm.startDate || undefined,
-      endDate: createForm.endDate || undefined,
+      key: selectedProcessDefinitionKey,
     };
 
     createWorkflowMutation.mutate(payload);
@@ -277,73 +260,38 @@ export default function WorkflowApproval() {
             </DialogHeader>
             <div className="grid gap-4 py-4">
               <div className="grid gap-2">
-                <Label>申请类型</Label>
+                <Label>选择流程类型</Label>
                 <Select
-                  value={createForm.type}
-                  onValueChange={(value) => setCreateForm({ ...createForm, type: value as any })}
+                  value={selectedProcessDefinitionKey}
+                  onValueChange={setSelectedProcessDefinitionKey}
                 >
                   <SelectTrigger>
-                    <SelectValue />
+                    <SelectValue placeholder="请选择要发起的流程类型" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="leave">请假申请</SelectItem>
-                    <SelectItem value="expense">费用报销</SelectItem>
-                    <SelectItem value="procurement">采购申请</SelectItem>
-                    <SelectItem value="travel">出差申请</SelectItem>
+                    {processDefinitionsData?.definitions.map((def) => (
+                      <SelectItem key={def.key} value={def.key}>
+                        {def.name}
+                      </SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
+                {processDefinitionsData?.definitions.length === 0 && (
+                  <p className="text-sm text-muted-foreground">
+                    暂无可用流程定义
+                  </p>
+                )}
               </div>
-              <div className="grid gap-2">
-                <Label htmlFor="title">申请标题</Label>
-                <Input
-                  id="title"
-                  value={createForm.title}
-                  onChange={(e) => setCreateForm({ ...createForm, title: e.target.value })}
-                  placeholder="请输入申请标题"
-                />
-              </div>
-              <div className="grid gap-2">
-                <Label htmlFor="description">申请说明</Label>
-                <Textarea
-                  id="description"
-                  value={createForm.description}
-                  onChange={(e) => setCreateForm({ ...createForm, description: e.target.value })}
-                  placeholder="请详细描述申请内容"
-                  rows={3}
-                />
-              </div>
-              {(createForm.type === 'expense' || createForm.type === 'procurement') && (
-                <div className="grid gap-2">
-                  <Label htmlFor="amount">金额 (元)</Label>
-                  <Input
-                    id="amount"
-                    type="number"
-                    value={createForm.amount}
-                    onChange={(e) => setCreateForm({ ...createForm, amount: e.target.value })}
-                    placeholder="请输入金额"
-                  />
-                </div>
-              )}
-              {(createForm.type === 'leave' || createForm.type === 'travel') && (
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="grid gap-2">
-                    <Label htmlFor="startDate">开始日期</Label>
-                    <Input
-                      id="startDate"
-                      type="date"
-                      value={createForm.startDate}
-                      onChange={(e) => setCreateForm({ ...createForm, startDate: e.target.value })}
-                    />
-                  </div>
-                  <div className="grid gap-2">
-                    <Label htmlFor="endDate">结束日期</Label>
-                    <Input
-                      id="endDate"
-                      type="date"
-                      value={createForm.endDate}
-                      onChange={(e) => setCreateForm({ ...createForm, endDate: e.target.value })}
-                    />
-                  </div>
+              {selectedProcessDefinitionKey && (
+                <div className="rounded-lg bg-muted/50 p-3">
+                  <p className="text-sm text-muted-foreground">
+                    已选择流程：{processDefinitionsData?.definitions.find(d => d.key === selectedProcessDefinitionKey)?.name}
+                  </p>
+                  {processDefinitionsData?.definitions.find(d => d.key === selectedProcessDefinitionKey)?.description && (
+                    <p className="text-xs text-muted-foreground mt-1">
+                      {processDefinitionsData.definitions.find(d => d.key === selectedProcessDefinitionKey)?.description}
+                    </p>
+                  )}
                 </div>
               )}
             </div>
@@ -370,35 +318,19 @@ export default function WorkflowApproval() {
             </Badge>
           </TabsTrigger>
           <TabsTrigger value="my">我的申请</TabsTrigger>
-          <TabsTrigger value="all">全部流程</TabsTrigger>
         </TabsList>
 
         {/* Filters */}
         <Card className="mt-4">
           <CardContent className="p-4">
-            <div className="flex flex-col gap-4 sm:flex-row">
-              <div className="relative flex-1">
-                <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                <Input
-                  placeholder="搜索流程标题、申请人..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="pl-9"
-                />
-              </div>
-              <Select value={typeFilter} onValueChange={setTypeFilter}>
-                <SelectTrigger className="w-full sm:w-40">
-                  <Filter className="h-4 w-4 mr-2" />
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">全部类型</SelectItem>
-                  <SelectItem value="leave">请假</SelectItem>
-                  <SelectItem value="expense">报销</SelectItem>
-                  <SelectItem value="procurement">采购</SelectItem>
-                  <SelectItem value="travel">出差</SelectItem>
-                </SelectContent>
-              </Select>
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+              <Input
+                placeholder="搜索流程标题、申请人..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="pl-9"
+              />
             </div>
           </CardContent>
         </Card>
@@ -416,8 +348,8 @@ export default function WorkflowApproval() {
             filteredWorkflows.map((workflow) => {
               const TypeIcon = workflowTypeConfig[workflow.type].icon;
               const StatusIcon = statusConfig[workflow.status].icon;
-              const canApprove = activeTab === 'pending' && 
-                (workflow.status === 'pending' || workflow.status === 'processing');
+              // 待我审批标签页的任务都可以审批
+              const canApprove = activeTab === 'pending';
               
               return (
                 <Card key={workflow.id} className="overflow-hidden">
@@ -436,15 +368,36 @@ export default function WorkflowApproval() {
                               <div>
                                 <h3 className="font-medium text-foreground">{workflow.title}</h3>
                                 <div className="flex items-center gap-2 mt-0.5 text-sm text-muted-foreground">
-                                  <span>{workflow.applicant}</span>
-                                  <span>·</span>
-                                  <span>{workflow.department}</span>
-                                  <span>·</span>
-                                  <span>{workflow.createdAt}</span>
+                                  {/* 我的申请标签页：显示流程定义key */}
+                                  {activeTab === 'my' && (workflow as any).processDefinitionKey && (
+                                    <>
+                                      <span>流程定义: {(workflow as any).processDefinitionKey}</span>
+                                    </>
+                                  )}
+                                  {/* 待我审批标签页：显示申请人等信息 */}
+                                  {activeTab === 'pending' && (
+                                    <>
+                                      {workflow.applicant && (
+                                        <>
+                                          <span>{workflow.applicant}</span>
+                                          <span>·</span>
+                                        </>
+                                      )}
+                                      {workflow.department && (
+                                        <>
+                                          <span>{workflow.department}</span>
+                                          <span>·</span>
+                                        </>
+                                      )}
+                                      {workflow.createdAt && <span>{workflow.createdAt}</span>}
+                                    </>
+                                  )}
                                 </div>
                               </div>
                             </div>
-                            <p className="text-sm text-muted-foreground line-clamp-1">{workflow.description}</p>
+                            {workflow.description && (
+                              <p className="text-sm text-muted-foreground line-clamp-1">{workflow.description}</p>
+                            )}
                             
                             {/* Extra info */}
                             <div className="flex flex-wrap gap-2 mt-3">
@@ -482,48 +435,48 @@ export default function WorkflowApproval() {
                                 详情
                               </Button>
                               {canApprove && (
-                                <>
-                                  <Button 
-                                    size="sm"
-                                    onClick={() => {
-                                      setSelectedWorkflow(workflow);
-                                      setApprovalComment('');
-                                    }}
-                                  >
-                                    <Check className="h-4 w-4 mr-1" />
-                                    审批
-                                  </Button>
-                                </>
+                                <Button 
+                                  size="sm"
+                                  onClick={() => {
+                                    setSelectedWorkflow(workflow);
+                                    setApprovalComment('');
+                                  }}
+                                >
+                                  <Check className="h-4 w-4 mr-1" />
+                                  审批
+                                </Button>
                               )}
                             </div>
                           </div>
                         </div>
 
-                        {/* Approval progress */}
-                        <div className="mt-4 pt-4 border-t border-border">
-                          <div className="flex items-center gap-2 text-sm text-muted-foreground mb-2">
-                            <span>审批进度</span>
-                          </div>
-                          <div className="flex items-center gap-2">
-                            {workflow.approvers.map((approver, index) => (
-                              <div key={approver.userId} className="flex items-center gap-2">
-                                {index > 0 && <div className="w-8 h-0.5 bg-border" />}
-                                <div className={`flex items-center gap-2 px-3 py-1.5 rounded-full border ${
-                                  approver.status === 'approved' 
-                                    ? 'bg-green-50 border-green-200 text-green-700'
-                                    : approver.status === 'rejected'
-                                    ? 'bg-red-50 border-red-200 text-red-700'
-                                    : 'bg-muted border-border text-muted-foreground'
-                                }`}>
-                                  {approver.status === 'approved' && <CheckCircle2 className="h-3.5 w-3.5" />}
-                                  {approver.status === 'rejected' && <XCircle className="h-3.5 w-3.5" />}
-                                  {approver.status === 'pending' && <Clock className="h-3.5 w-3.5" />}
-                                  <span className="text-sm">{approver.name}</span>
+                        {/* Approval progress - 只在有审批人信息时显示 */}
+                        {workflow.approvers && workflow.approvers.length > 0 && (
+                          <div className="mt-4 pt-4 border-t border-border">
+                            <div className="flex items-center gap-2 text-sm text-muted-foreground mb-2">
+                              <span>审批进度</span>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              {workflow.approvers.map((approver, index) => (
+                                <div key={approver.userId} className="flex items-center gap-2">
+                                  {index > 0 && <div className="w-8 h-0.5 bg-border" />}
+                                  <div className={`flex items-center gap-2 px-3 py-1.5 rounded-full border ${
+                                    approver.status === 'approved' 
+                                      ? 'bg-green-50 border-green-200 text-green-700'
+                                      : approver.status === 'rejected'
+                                      ? 'bg-red-50 border-red-200 text-red-700'
+                                      : 'bg-muted border-border text-muted-foreground'
+                                  }`}>
+                                    {approver.status === 'approved' && <CheckCircle2 className="h-3.5 w-3.5" />}
+                                    {approver.status === 'rejected' && <XCircle className="h-3.5 w-3.5" />}
+                                    {approver.status === 'pending' && <Clock className="h-3.5 w-3.5" />}
+                                    <span className="text-sm">{approver.name}</span>
+                                  </div>
                                 </div>
-                              </div>
-                            ))}
+                              ))}
+                            </div>
                           </div>
-                        </div>
+                        )}
                       </div>
                     </div>
                   </CardContent>
@@ -544,28 +497,50 @@ export default function WorkflowApproval() {
             <div className="space-y-4">
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <Label className="text-muted-foreground">申请人</Label>
-                  <p className="mt-1 font-medium">{selectedWorkflow.applicant}</p>
+                  <Label className="text-muted-foreground">流程名称</Label>
+                  <p className="mt-1 font-medium">{selectedWorkflow.title}</p>
                 </div>
                 <div>
-                  <Label className="text-muted-foreground">部门</Label>
-                  <p className="mt-1 font-medium">{selectedWorkflow.department}</p>
-                </div>
-                <div>
-                  <Label className="text-muted-foreground">申请类型</Label>
+                  <Label className="text-muted-foreground">流程类型</Label>
                   <p className="mt-1 font-medium">{workflowTypeConfig[selectedWorkflow.type].label}</p>
                 </div>
-                <div>
-                  <Label className="text-muted-foreground">申请时间</Label>
-                  <p className="mt-1 font-medium">{selectedWorkflow.createdAt}</p>
-                </div>
+                {/* 我的申请：显示流程定义key */}
+                {activeTab === 'my' && (selectedWorkflow as any).processDefinitionKey && (
+                  <div>
+                    <Label className="text-muted-foreground">流程定义Key</Label>
+                    <p className="mt-1 font-medium">{(selectedWorkflow as any).processDefinitionKey}</p>
+                  </div>
+                )}
+                {/* 待我审批：显示申请人等信息 */}
+                {activeTab === 'pending' && (
+                  <>
+                    {selectedWorkflow.applicant && (
+                      <div>
+                        <Label className="text-muted-foreground">申请人</Label>
+                        <p className="mt-1 font-medium">{selectedWorkflow.applicant}</p>
+                      </div>
+                    )}
+                    {selectedWorkflow.department && (
+                      <div>
+                        <Label className="text-muted-foreground">部门</Label>
+                        <p className="mt-1 font-medium">{selectedWorkflow.department}</p>
+                      </div>
+                    )}
+                    {selectedWorkflow.createdAt && (
+                      <div>
+                        <Label className="text-muted-foreground">创建时间</Label>
+                        <p className="mt-1 font-medium">{selectedWorkflow.createdAt}</p>
+                      </div>
+                    )}
+                  </>
+                )}
                 {selectedWorkflow.amount && (
                   <div>
                     <Label className="text-muted-foreground">金额</Label>
                     <p className="mt-1 font-medium">¥{selectedWorkflow.amount.toLocaleString()}</p>
                   </div>
                 )}
-                {selectedWorkflow.startDate && (
+                {selectedWorkflow.startDate && selectedWorkflow.endDate && (
                   <div>
                     <Label className="text-muted-foreground">日期范围</Label>
                     <p className="mt-1 font-medium">{selectedWorkflow.startDate} ~ {selectedWorkflow.endDate}</p>
@@ -573,34 +548,38 @@ export default function WorkflowApproval() {
                 )}
               </div>
               
-              <div>
-                <Label className="text-muted-foreground">申请说明</Label>
-                <p className="mt-1">{selectedWorkflow.description}</p>
-              </div>
-
-              <div>
-                <Label className="text-muted-foreground">审批记录</Label>
-                <div className="mt-2 space-y-2">
-                  {selectedWorkflow.approvers.map((approver) => (
-                    <div key={approver.userId} className="flex items-center justify-between p-3 rounded-lg bg-muted/50">
-                      <div className="flex items-center gap-2">
-                        {approver.status === 'approved' && <CheckCircle2 className="h-4 w-4 text-green-600" />}
-                        {approver.status === 'rejected' && <XCircle className="h-4 w-4 text-destructive" />}
-                        {approver.status === 'pending' && <Clock className="h-4 w-4 text-muted-foreground" />}
-                        <span>{approver.name}</span>
-                      </div>
-                      <div className="text-sm text-muted-foreground">
-                        {approver.comment && <span className="mr-2">"{approver.comment}"</span>}
-                        {approver.approvedAt && <span>{approver.approvedAt}</span>}
-                        {approver.status === 'pending' && <span>待审批</span>}
-                      </div>
-                    </div>
-                  ))}
+              {selectedWorkflow.description && (
+                <div>
+                  <Label className="text-muted-foreground">说明</Label>
+                  <p className="mt-1">{selectedWorkflow.description}</p>
                 </div>
-              </div>
+              )}
 
-              {/* Approval actions */}
-              {activeTab === 'pending' && (selectedWorkflow.status === 'pending' || selectedWorkflow.status === 'processing') && (
+              {selectedWorkflow.approvers && selectedWorkflow.approvers.length > 0 && (
+                <div>
+                  <Label className="text-muted-foreground">审批记录</Label>
+                  <div className="mt-2 space-y-2">
+                    {selectedWorkflow.approvers.map((approver) => (
+                      <div key={approver.userId} className="flex items-center justify-between p-3 rounded-lg bg-muted/50">
+                        <div className="flex items-center gap-2">
+                          {approver.status === 'approved' && <CheckCircle2 className="h-4 w-4 text-green-600" />}
+                          {approver.status === 'rejected' && <XCircle className="h-4 w-4 text-destructive" />}
+                          {approver.status === 'pending' && <Clock className="h-4 w-4 text-muted-foreground" />}
+                          <span>{approver.name}</span>
+                        </div>
+                        <div className="text-sm text-muted-foreground">
+                          {approver.comment && <span className="mr-2">"{approver.comment}"</span>}
+                          {approver.approvedAt && <span>{approver.approvedAt}</span>}
+                          {approver.status === 'pending' && <span>待审批</span>}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Approval actions - 待我审批标签页的任务都可以审批 */}
+              {activeTab === 'pending' && (
                 <div className="space-y-3 pt-4 border-t border-border">
                   <div>
                     <Label htmlFor="comment">审批意见</Label>

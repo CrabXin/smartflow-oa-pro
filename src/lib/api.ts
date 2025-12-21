@@ -569,6 +569,28 @@ export async function apiDeleteDepartment(id: string): Promise<void> {
 
 // ===================== 流程审批（简化版） =====================
 
+// 流程定义 DTO
+interface BackendProcessDefinitionDTO {
+  id: string;
+  name: string;
+  key: string;
+  description?: string;
+}
+
+interface BackendIPageProcessDefinitionDTO {
+  records: BackendProcessDefinitionDTO[];
+  total: number;
+  size: number;
+  current: number;
+}
+
+export interface ProcessDefinition {
+  id: string;
+  name: string;
+  key: string;
+  description?: string;
+}
+
 interface BackendProcessInstanceDTO {
   id: string;
   processDefinitionId?: string;
@@ -594,23 +616,55 @@ interface BackendIPageProcessInstanceDTO {
   current: number;
 }
 
+// SimpleProcessInstanceDTO - 用于"我的申请"
+interface BackendSimpleProcessInstanceDTO {
+  name: string;
+  processDefinitionKey: string;
+  status: string; // 已完结/未完结
+}
+
+interface BackendIPageSimpleProcessInstanceDTO {
+  records: BackendSimpleProcessInstanceDTO[];
+  total: number;
+  size: number;
+  current: number;
+}
+
 export interface WorkflowsPage {
   workflows: UiWorkflow[];
   total: number;
 }
 
 function mapTaskToWorkflow(t: BackendTaskDTO): UiWorkflow {
+  // 根据 processDefinitionKey 或 category 推断类型
+  const getTypeFromTask = (task: BackendTaskDTO): UiWorkflow["type"] => {
+    const key = task.processDefinitionId || task.category || "";
+    if (key.includes("leave") || key.includes("请假")) return "leave";
+    if (key.includes("expense") || key.includes("报销")) return "expense";
+    if (key.includes("procurement") || key.includes("采购")) return "procurement";
+    if (key.includes("travel") || key.includes("出差")) return "travel";
+    return "leave"; // 默认
+  };
+
   return {
-    id: t.processInstanceId || t.id,
-    title: t.name || "流程",
-    type: "leave",
-    applicant: "",
-    applicantId: t.assignee || "",
+    id: t.id, // 任务ID，用于审批操作
+    title: t.name || "待审批任务",
+    type: getTypeFromTask(t),
+    applicant: t.owner || t.assignee || "",
+    applicantId: t.owner || t.assignee || "",
     department: "",
-    status: "pending",
+    status: "pending", // 待审批的任务都是 pending 状态
     createdAt: t.createTime || "",
     description: t.description || "",
     approvers: [],
+    // 保存任务相关信息，用于后续操作
+    processInstanceId: t.processInstanceId,
+    processDefinitionId: t.processDefinitionId,
+    taskDefinitionKey: t.taskDefinitionKey,
+  } as UiWorkflow & {
+    processInstanceId?: string;
+    processDefinitionId?: string;
+    taskDefinitionKey?: string;
   };
 }
 
@@ -630,6 +684,40 @@ function mapProcessInstanceToWorkflow(
     description: p.description || "",
     approvers: [],
   };
+}
+
+function mapSimpleProcessInstanceToWorkflow(
+  p: BackendSimpleProcessInstanceDTO,
+): UiWorkflow {
+  // 根据 processDefinitionKey 推断类型
+  const getTypeFromKey = (key: string): UiWorkflow["type"] => {
+    if (key.includes("leave") || key.includes("请假")) return "leave";
+    if (key.includes("expense") || key.includes("报销")) return "expense";
+    if (key.includes("procurement") || key.includes("采购")) return "procurement";
+    if (key.includes("travel") || key.includes("出差")) return "travel";
+    return "leave"; // 默认
+  };
+
+  const getStatusFromString = (status: string): UiWorkflow["status"] => {
+    if (status.includes("已完结") || status.includes("已完成")) return "approved";
+    if (status.includes("未完结") || status.includes("进行中")) return "processing";
+    return "pending";
+  };
+
+  return {
+    id: p.processDefinitionKey, // 使用 key 作为唯一标识
+    title: p.name || "流程",
+    type: getTypeFromKey(p.processDefinitionKey),
+    applicant: "",
+    applicantId: "",
+    department: "",
+    status: getStatusFromString(p.status),
+    createdAt: "",
+    description: "",
+    approvers: [],
+    // 保存流程定义key，用于显示
+    processDefinitionKey: p.processDefinitionKey,
+  } as UiWorkflow & { processDefinitionKey?: string };
 }
 
 export interface WorkflowListQuery {
@@ -665,11 +753,11 @@ export async function apiGetMyWorkflows(
   params.set("page", String(query.page ?? 1));
   params.set("limit", String(query.limit ?? 50));
 
-  const page = await requestResult<BackendIPageProcessInstanceDTO>(
+  const page = await requestResult<BackendIPageSimpleProcessInstanceDTO>(
     `/api/workflows/my?${params.toString()}`,
   );
   return {
-    workflows: page.records.map((p) => mapProcessInstanceToWorkflow(p)),
+    workflows: page.records.map((p) => mapSimpleProcessInstanceToWorkflow(p)),
     total: page.total,
   };
 }
@@ -691,26 +779,38 @@ export async function apiGetPendingWorkflows(
   };
 }
 
+// 获取流程定义列表
+export async function apiGetProcessDefinitions(
+  page = 1,
+  limit = 100,
+): Promise<{ definitions: ProcessDefinition[]; total: number }> {
+  const pageData = await requestResult<BackendIPageProcessDefinitionDTO>(
+    `/api/workflows?page=${page}&limit=${limit}`,
+  );
+  return {
+    definitions: pageData.records.map((d) => ({
+      id: d.id,
+      name: d.name,
+      key: d.key,
+      description: d.description,
+    })),
+    total: pageData.total,
+  };
+}
+
 export interface WorkflowCreatePayload {
-  type: UiWorkflow["type"];
-  title: string;
-  description: string;
-  amount?: number;
-  startDate?: string;
-  endDate?: string;
+  key: string; // 流程定义的 key
 }
 
 export async function apiCreateWorkflow(
   payload: WorkflowCreatePayload,
-): Promise<UiWorkflow> {
-  const created = await requestResult<BackendProcessInstanceDTO>(
-    "/api/workflows",
+): Promise<void> {
+  await requestResult<string>(
+    `/api/workflows?key=${encodeURIComponent(payload.key)}`,
     {
       method: "POST",
-      body: JSON.stringify(payload),
     },
   );
-  return mapProcessInstanceToWorkflow(created);
 }
 
 export interface WorkflowApprovePayload {
