@@ -149,10 +149,12 @@ export default function UserManagement() {
 
   const createUserMutation = useMutation({
     mutationFn: (payload: UserCreatePayload) => apiCreateUser(payload),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["users"] });
+    onSuccess: async () => {
+      // 先关闭对话框和重置表单
       setIsAddDialogOpen(false);
       resetForm();
+      // 然后刷新用户列表
+      await queryClient.invalidateQueries({ queryKey: ["users"] });
       toast.success("用户创建成功");
     },
     onError: (error: unknown) => {

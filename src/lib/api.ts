@@ -346,16 +346,29 @@ function mapBackendUserInfoDTO(user: BackendUserInfoDTO): UiUser & {
   };
 }
 
-function mapBackendUser(user: BackendUser): UiUser {
+function mapBackendUser(user: BackendUser | null | undefined): UiUser {
+  if (!user) {
+    return {
+      id: "",
+      name: "未知用户",
+      email: "",
+      avatar: "??",
+      department: "",
+      role: "employee",
+      phone: "",
+      status: "active",
+      createdAt: "",
+    };
+  }
   const name =
     user.displayName ||
     `${user.firstName ?? ""}${user.lastName ?? ""}` ||
-    user.email.split("@")[0];
+    (user.email ? user.email.split("@")[0] : "未知用户");
   const avatar = name.slice(0, 2).toUpperCase();
   return {
-    id: user.id,
+    id: user.id || "",
     name,
-    email: user.email,
+    email: user.email || "",
     avatar,
     department: "",
     role: "employee",
@@ -412,12 +425,12 @@ export interface UserUpdatePayload {
 
 export async function apiCreateUser(
   payload: UserCreatePayload,
-): Promise<UiUser> {
-  const created = await requestResult<BackendUser>("/api/users/add", {
+): Promise<void> {
+  await requestResult<BackendUser>("/api/users/add", {
     method: "POST",
     body: JSON.stringify(payload),
   });
-  return mapBackendUser(created);
+  // 创建用户成功后不需要返回用户数据，只需要刷新列表即可
 }
 
 export async function apiUpdateUser(
