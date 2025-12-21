@@ -303,8 +303,10 @@ interface BackendUserInfoDTO {
   id: string;
   firstName?: string;
   lastName?: string;
-  dept: string; // 部门
-  role: string; // 角色
+  deptId: string; // 部门ID
+  roleId: string; // 角色ID
+  deptName: string; // 部门名称
+  roleName: string; // 角色名称
 }
 
 interface BackendIPageUserInfoDTO {
@@ -321,7 +323,10 @@ export interface UsersPage {
   pageSize: number;
 }
 
-function mapBackendUserInfoDTO(user: BackendUserInfoDTO): UiUser {
+function mapBackendUserInfoDTO(user: BackendUserInfoDTO): UiUser & {
+  departmentName?: string;
+  roleName?: string;
+} {
   const name =
     `${user.firstName ?? ""}${user.lastName ?? ""}`.trim() || "未知用户";
   const avatar = name.slice(0, 2).toUpperCase();
@@ -330,11 +335,14 @@ function mapBackendUserInfoDTO(user: BackendUserInfoDTO): UiUser {
     name,
     email: "", // UserInfoDTO 不包含 email，从其他地方获取或留空
     avatar,
-    department: user.dept || "",
-    role: (user.role as UiUser["role"]) || "employee",
+    department: user.deptId || "", // 存储部门ID，用于更新接口
+    role: (user.roleId as UiUser["role"]) || "employee", // 存储角色ID，用于更新接口
     phone: "",
     status: "active",
     createdAt: "",
+    // 添加扩展字段用于显示
+    departmentName: user.deptName || "",
+    roleName: user.roleName || "",
   };
 }
 

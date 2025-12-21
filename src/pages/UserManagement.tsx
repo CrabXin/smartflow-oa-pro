@@ -471,11 +471,13 @@ export default function UserManagement() {
                       </div>
                     </TableCell>
                     <TableCell className="text-muted-foreground">
-                      {user.department}
+                      {(user as any).departmentName || user.department}
                     </TableCell>
                     <TableCell>
                       <Badge variant="secondary">
-                        {roleMap[user.role] || user.role}
+                        {(user as any).roleName ||
+                          roleMap[user.role] ||
+                          user.role}
                       </Badge>
                     </TableCell>
                     <TableCell>
@@ -528,8 +530,10 @@ export default function UserManagement() {
                   <Label>当前部门</Label>
                   <Input
                     value={
+                      (editingUser as any).departmentName ||
                       departments.find((d) => d.id === editingUser.department)
-                        ?.name || editingUser.department
+                        ?.name ||
+                      editingUser.department
                     }
                     disabled
                     className="bg-muted"
@@ -538,7 +542,11 @@ export default function UserManagement() {
                 <div className="grid gap-2">
                   <Label>当前角色</Label>
                   <Input
-                    value={roleMap[editingUser.role] || editingUser.role}
+                    value={
+                      (editingUser as any).roleName ||
+                      roleMap[editingUser.role] ||
+                      editingUser.role
+                    }
                     disabled
                     className="bg-muted"
                   />
