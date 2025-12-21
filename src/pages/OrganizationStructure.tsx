@@ -21,7 +21,6 @@ import {
   apiGetDepartmentMembers,
   apiCreateDepartment,
   apiDeleteDepartment,
-  apiGetUsers,
   apiCreateUser,
   apiUpdateUser,
   apiDeleteUser,
@@ -56,22 +55,22 @@ import { toast } from "sonner";
 
 /**
  * API 接口:
- * GET /api/departments - 获取部门树形结构
- * 返回数据: Department[] (树形结构)
+ * GET /api/dept/list - 获取部门列表
+ * 返回数据: DepartmentDTO[] (扁平列表)
  *
- * POST /api/departments - 创建部门
- * 请求体: { name: string, parentId?: string, managerId: string }
- * 返回数据: { department: Department }
+ * POST /api/dept/add - 创建部门
+ * 请求体: { name: string }
+ * 返回数据: { department: Group }
  *
- * PUT /api/departments/:id - 更新部门
- * 请求体: { name?: string, parentId?: string, managerId?: string }
- * 返回数据: { department: Department }
+ * PUT /api/dept/:id - 更新部门
+ * 请求体: { name: string }
+ * 返回数据: { department: Group }
  *
- * DELETE /api/departments/:id - 删除部门
+ * DELETE /api/dept/:id - 删除部门
  * 返回数据: { success: boolean }
  *
- * GET /api/departments/:id/members - 获取部门成员
- * 返回数据: User[]
+ * GET /api/dept/:id/members - 获取部门成员
+ * 返回数据: UserInfoDTO[]
  */
 
 interface DepartmentNodeProps {
@@ -164,10 +163,8 @@ export default function OrganizationStructure() {
   const [isAddMemberDialogOpen, setIsAddMemberDialogOpen] = useState(false);
   const [formData, setFormData] = useState<{
     name: string;
-    managerId: string;
   }>({
     name: "",
-    managerId: "",
   });
   const [memberFormData, setMemberFormData] = useState<{
     firstName: string;
@@ -189,12 +186,6 @@ export default function OrganizationStructure() {
   } = useQuery<Department[]>({
     queryKey: ["departments"],
     queryFn: apiGetDepartments,
-  });
-
-  // 获取用户列表用于选择部门负责人
-  const { data: usersPage } = useQuery({
-    queryKey: ["users", { page: 1, limit: 100 }],
-    queryFn: () => apiGetUsers({ page: 1, limit: 100 }),
   });
 
   // 获取角色列表用于添加成员
@@ -249,13 +240,8 @@ export default function OrganizationStructure() {
       toast.error("请输入部门名称");
       return;
     }
-    if (!formData.managerId) {
-      toast.error("请选择部门负责人");
-      return;
-    }
     const payload: DepartmentCreatePayload = {
       name: formData.name.trim(),
-      managerId: formData.managerId,
     };
     createDepartmentMutation.mutate(payload);
   };
@@ -263,7 +249,6 @@ export default function OrganizationStructure() {
   const resetForm = () => {
     setFormData({
       name: "",
-      managerId: "",
     });
   };
 
@@ -423,8 +408,6 @@ export default function OrganizationStructure() {
     toast.success("数据已刷新");
   };
 
-  const manager = selectedMembers.length > 0 ? selectedMembers[0] : null;
-
   return (
     <div className="grid gap-6 lg:grid-cols-3">
       {/* Organization tree */}
@@ -524,35 +507,6 @@ export default function OrganizationStructure() {
         <CardContent>
           {selectedDepartment ? (
             <div className="space-y-6">
-              {/* Manager info */}
-              {manager && (
-                <div className="rounded-lg border border-border p-4">
-                  <h4 className="text-sm font-medium text-muted-foreground mb-3">
-                    部门负责人
-                  </h4>
-                  <div className="flex items-center gap-4">
-                    <div className="flex h-12 w-12 items-center justify-center rounded-full bg-primary/10 text-primary font-medium">
-                      {manager.avatar}
-                    </div>
-                    <div>
-                      <p className="font-medium text-foreground">
-                        {manager.name}
-                      </p>
-                      <p className="text-sm text-muted-foreground">
-                        {manager.email}
-                      </p>
-                    </div>
-                    <Badge variant="secondary" className="ml-auto">
-                      {manager.role === "admin"
-                        ? "管理员"
-                        : manager.role === "manager"
-                        ? "经理"
-                        : "员工"}
-                    </Badge>
-                  </div>
-                </div>
-              )}
-
               {/* Sub-departments */}
               {selectedDepartment.children &&
                 selectedDepartment.children.length > 0 && (
@@ -607,11 +561,18 @@ export default function OrganizationStructure() {
                           <p className="font-medium text-foreground truncate">
                             {member.name}
                           </p>
-                          {member.email && (
-                            <p className="text-sm text-muted-foreground truncate">
-                              {member.email}
-                            </p>
-                          )}
+                          <div className="flex items-center gap-2 mt-1">
+                            {(member as any).roleName && (
+                              <Badge variant="secondary" className="text-xs">
+                                {(member as any).roleName}
+                              </Badge>
+                            )}
+                            {member.email && (
+                              <p className="text-sm text-muted-foreground truncate">
+                                {member.email}
+                              </p>
+                            )}
+                          </div>
                         </div>
                         <div className="flex items-center gap-2">
                           <Badge
@@ -680,28 +641,6 @@ export default function OrganizationStructure() {
                 }
                 placeholder="请输入部门名称"
               />
-            </div>
-            <div className="grid gap-2">
-              <Label htmlFor="dept-manager">部门负责人 *</Label>
-              <Select
-                value={formData.managerId}
-                onValueChange={(value) =>
-                  setFormData({ ...formData, managerId: value })
-                }
-              >
-                <SelectTrigger id="dept-manager">
-                  <SelectValue placeholder="选择部门负责人" />
-                </SelectTrigger>
-                <SelectContent>
-                  {usersPage?.users
-                    .filter((user) => user.status === "active")
-                    .map((user) => (
-                      <SelectItem key={user.id} value={user.id}>
-                        {user.name} ({user.email})
-                      </SelectItem>
-                    ))}
-                </SelectContent>
-              </Select>
             </div>
           </div>
           <DialogFooter>

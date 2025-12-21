@@ -508,8 +508,6 @@ export async function apiGetDepartmentMembers(
 
 export interface DepartmentCreatePayload {
   name: string;
-  parentId?: string | null;
-  managerId: string;
 }
 
 export type DepartmentUpdatePayload = Partial<DepartmentCreatePayload>;
@@ -524,8 +522,8 @@ export async function apiCreateDepartment(
   return {
     id: created.id,
     name: created.name,
-    parentId: payload.parentId ?? null,
-    managerId: payload.managerId,
+    parentId: null,
+    managerId: "",
     memberCount: 0,
     children: [],
   };
@@ -542,8 +540,8 @@ export async function apiUpdateDepartment(
   return {
     id: updated.id,
     name: updated.name,
-    parentId: payload.parentId ?? null,
-    managerId: payload.managerId ?? "",
+    parentId: null,
+    managerId: "",
     memberCount: 0,
     children: [],
   };
