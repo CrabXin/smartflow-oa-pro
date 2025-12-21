@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import {
   ChevronRight,
   ChevronDown,
@@ -151,11 +151,9 @@ export default function OrganizationStructure() {
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [formData, setFormData] = useState<{
     name: string;
-    parentId: string;
     managerId: string;
   }>({
     name: "",
-    parentId: "__none__",
     managerId: "",
   });
   const queryClient = useQueryClient();
@@ -171,12 +169,6 @@ export default function OrganizationStructure() {
     queryFn: () => apiGetUsers({ page: 1, limit: 100 }),
   });
 
-  useEffect(() => {
-    if (!selectedDepartment && departments && departments.length > 0) {
-      setSelectedDepartment(departments[0]);
-      setExpandedIds(new Set([departments[0].id]));
-    }
-  }, [departments, selectedDepartment]);
 
   const handleToggle = (id: string) => {
     const newExpanded = new Set(expandedIds);
@@ -215,17 +207,16 @@ export default function OrganizationStructure() {
       toast.error("请选择部门负责人");
       return;
     }
-    createDepartmentMutation.mutate({
+    const payload: DepartmentCreatePayload = {
       name: formData.name.trim(),
-      parentId: formData.parentId === "__none__" ? undefined : formData.parentId,
       managerId: formData.managerId,
-    });
+    };
+    createDepartmentMutation.mutate(payload);
   };
 
   const resetForm = () => {
     setFormData({
       name: "",
-      parentId: "__none__",
       managerId: "",
     });
   };
@@ -464,25 +455,6 @@ export default function OrganizationStructure() {
                 onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                 placeholder="请输入部门名称"
               />
-            </div>
-            <div className="grid gap-2">
-              <Label htmlFor="dept-parent">上级部门（可选）</Label>
-              <Select
-                value={formData.parentId}
-                onValueChange={(value) => setFormData({ ...formData, parentId: value })}
-              >
-                <SelectTrigger id="dept-parent">
-                  <SelectValue placeholder="选择上级部门（留空则为顶级部门）" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="__none__">无（顶级部门）</SelectItem>
-                  {departments?.map((dept) => (
-                    <SelectItem key={dept.id} value={dept.id}>
-                      {dept.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
             </div>
             <div className="grid gap-2">
               <Label htmlFor="dept-manager">部门负责人 *</Label>
