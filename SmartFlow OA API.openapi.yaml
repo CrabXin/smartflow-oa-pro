@@ -1,0 +1,2030 @@
+openapi: 3.0.1
+info:
+  title: SmartFlow OA API
+  description: |
+    SmartFlow OA 系统后端接口定义。
+    本文档基于当前前端项目的页面逻辑与 mock 数据整理而来，可用于 Swagger UI 展示与 Spring Boot 代码生成。
+  version: 1.0.0
+tags: []
+paths:
+  /api/dashboard/stats:
+    get:
+      summary: 获取仪表盘统计数据
+      deprecated: false
+      description: ''
+      tags: []
+      parameters: []
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResultMapObject'
+              example:
+                code: 1
+                msg: 成功
+                data:
+                  pendingApprovals: 0
+                  unreadNotifications: 0
+                  todayMeetings: 0
+                  totalEmployees: 0
+                  monthlyWorkflows: 0
+                  approvalRate: 0
+      security:
+        - BearerAuth: []
+  /api/dashboard/recent-workflows:
+    get:
+      summary: 获取最近流程
+      deprecated: false
+      description: ''
+      tags: []
+      parameters:
+        - name: limit
+          in: query
+          description: 返回条数
+          required: true
+          example: 5
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResultListTaskDTO'
+              example:
+                code: 0
+                msg: ''
+                data:
+                  - id: ''
+                    name: ''
+                    description: ''
+                    assignee: ''
+                    owner: ''
+                    processInstanceId: ''
+                    processDefinitionId: ''
+                    taskDefinitionKey: ''
+                    createTime: ''
+                    dueDate: ''
+                    priority: 0
+                    category: ''
+                    formKey: ''
+                    parentTaskId: ''
+      security:
+        - BearerAuth: []
+  /api/dashboard/today-meetings:
+    get:
+      summary: 获取今日会议
+      deprecated: false
+      description: ''
+      tags: []
+      parameters:
+        - name: date
+          in: query
+          description: 指定日期，默认当前日期，格式 YYYY-MM-DD
+          required: false
+          schema:
+            type: string
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResultListMeeting'
+              example:
+                code: 0
+                msg: ''
+                data:
+                  - id: 0
+                    title: ''
+                    roomId: 0
+                    organizerId: ''
+                    attendees: ''
+                    date: ''
+                    startTime: ''
+                    endTime: ''
+                    description: ''
+                    status: ''
+                    createdAt: ''
+      security:
+        - BearerAuth: []
+  /api/dashboard/recent-notifications:
+    get:
+      summary: 获取最新通知
+      deprecated: false
+      description: ''
+      tags: []
+      parameters:
+        - name: limit
+          in: query
+          description: 返回条数
+          required: true
+          example: 3
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResultListNotification'
+              example:
+                code: 0
+                msg: ''
+                data:
+                  - id: 0
+                    title: ''
+                    content: ''
+                    type: ''
+                    isRead: false
+                    link: ''
+                    userId: ''
+                    createdAt: ''
+      security:
+        - BearerAuth: []
+  /api/users:
+    get:
+      summary: 获取用户列表
+      deprecated: false
+      description: ''
+      tags: []
+      parameters:
+        - name: search
+          in: query
+          description: 按姓名 / 邮箱 / 电话模糊搜索
+          required: false
+          schema:
+            type: string
+        - name: department
+          in: query
+          description: 部门名称
+          required: false
+          schema:
+            type: string
+        - name: status
+          in: query
+          description: 用户状态
+          required: false
+          schema:
+            type: string
+        - name: page
+          in: query
+          description: 页码，从 1 开始
+          required: true
+          example: 1
+          schema:
+            type: integer
+        - name: limit
+          in: query
+          description: 每页条数
+          required: true
+          example: 20
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResultIPageUser'
+              example:
+                code: 0
+                msg: ''
+                data:
+                  records:
+                    - id: ''
+                      firstName: ''
+                      lastName: ''
+                      displayName: ''
+                      email: ''
+                      password: ''
+                      tenantId: ''
+                      pictureSet: false
+                  total: 0
+                  size: 0
+                  current: 0
+                  orders:
+                    - column: ''
+                      asc: false
+                  optimizeCountSql: false
+                  searchCount: false
+                  optimizeJoinOfCountSql: false
+                  maxLimit: 0
+                  countId: ''
+                  pages: 0
+      security:
+        - BearerAuth: []
+    post:
+      summary: 创建用户
+      deprecated: false
+      description: ''
+      tags: []
+      parameters: []
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UserCreateRequest'
+              description: ''
+      responses:
+        '200':
+          description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResultUser'
+              example:
+                code: 0
+                msg: ''
+                data:
+                  id: ''
+                  firstName: ''
+                  lastName: ''
+                  displayName: ''
+                  email: ''
+                  password: ''
+                  tenantId: ''
+                  pictureSet: false
+      security:
+        - BearerAuth: []
+  /api/users/{id}:
+    put:
+      summary: 更新用户
+      deprecated: false
+      description: ''
+      tags: []
+      parameters:
+        - name: id
+          in: path
+          description: 用户 ID
+          required: true
+          example: ''
+          schema:
+            type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UserUpdateRequest'
+              description: ''
+      responses:
+        '200':
+          description: 更新成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResultUser'
+              example:
+                code: 0
+                msg: ''
+                data:
+                  id: ''
+                  firstName: ''
+                  lastName: ''
+                  displayName: ''
+                  email: ''
+                  password: ''
+                  tenantId: ''
+                  pictureSet: false
+      security:
+        - BearerAuth: []
+    delete:
+      summary: 删除用户
+      deprecated: false
+      description: ''
+      tags: []
+      parameters:
+        - name: id
+          in: path
+          description: 用户 ID
+          required: true
+          example: ''
+          schema:
+            type: string
+      responses:
+        '200':
+          description: 删除成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResultString'
+              example:
+                code: 0
+                msg: ''
+                data: ''
+      security:
+        - BearerAuth: []
+  /api/departments:
+    get:
+      summary: 获取部门树形结构
+      deprecated: false
+      description: ''
+      tags: []
+      parameters: []
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResultListGroup'
+              example:
+                code: 0
+                msg: ''
+                data:
+                  - id: ''
+                    name: ''
+                    type: ''
+      security:
+        - BearerAuth: []
+    post:
+      summary: 创建部门
+      deprecated: false
+      description: ''
+      tags: []
+      parameters: []
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DepartmentCreateRequest'
+              description: ''
+      responses:
+        '200':
+          description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResultGroup'
+              example:
+                code: 0
+                msg: ''
+                data:
+                  id: ''
+                  name: ''
+                  type: ''
+      security:
+        - BearerAuth: []
+  /api/departments/{id}:
+    put:
+      summary: 更新部门
+      deprecated: false
+      description: ''
+      tags: []
+      parameters:
+        - name: id
+          in: path
+          description: 部门 ID
+          required: true
+          example: ''
+          schema:
+            type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DepartmentUpdateRequest'
+              description: ''
+      responses:
+        '200':
+          description: 更新成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResultGroup'
+              example:
+                code: 0
+                msg: ''
+                data:
+                  id: ''
+                  name: ''
+                  type: ''
+      security:
+        - BearerAuth: []
+    delete:
+      summary: 删除部门
+      deprecated: false
+      description: ''
+      tags: []
+      parameters:
+        - name: id
+          in: path
+          description: 部门 ID
+          required: true
+          example: ''
+          schema:
+            type: string
+      responses:
+        '200':
+          description: 删除成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResultString'
+              example:
+                code: 0
+                msg: ''
+                data: ''
+      security:
+        - BearerAuth: []
+  /api/departments/{id}/members:
+    get:
+      summary: 获取部门成员
+      deprecated: false
+      description: ''
+      tags: []
+      parameters:
+        - name: id
+          in: path
+          description: 部门 ID
+          required: true
+          example: ''
+          schema:
+            type: string
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResultListUser'
+              example:
+                code: 0
+                msg: ''
+                data:
+                  - id: ''
+                    firstName: ''
+                    lastName: ''
+                    displayName: ''
+                    email: ''
+                    password: ''
+                    tenantId: ''
+                    pictureSet: false
+      security:
+        - BearerAuth: []
+  /api/workflows:
+    get:
+      summary: 获取流程列表
+      deprecated: false
+      description: ''
+      tags: []
+      parameters:
+        - name: type
+          in: query
+          description: 流程类型
+          required: false
+          schema:
+            type: string
+        - name: status
+          in: query
+          description: 流程状态
+          required: false
+          schema:
+            type: string
+        - name: page
+          in: query
+          description: 页码
+          required: true
+          example: 1
+          schema:
+            type: integer
+        - name: limit
+          in: query
+          description: 每页条数
+          required: true
+          example: 20
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResultIPageProcessInstanceDTO'
+              example:
+                code: 0
+                msg: ''
+                data:
+                  records:
+                    - id: ''
+                      processDefinitionId: ''
+                      processDefinitionKey: ''
+                      processDefinitionName: ''
+                      businessKey: ''
+                      startDate: ''
+                      startUserId: ''
+                      startActivityId: ''
+                      superProcessInstanceId: ''
+                      suspended: false
+                      tenantId: ''
+                      name: ''
+                      localizedName: ''
+                      description: ''
+                      localizedDescription: ''
+                  total: 0
+                  size: 0
+                  current: 0
+                  orders:
+                    - column: ''
+                      asc: false
+                  optimizeCountSql: false
+                  searchCount: false
+                  optimizeJoinOfCountSql: false
+                  maxLimit: 0
+                  countId: ''
+                  pages: 0
+      security:
+        - BearerAuth: []
+    post:
+      summary: 创建流程申请
+      deprecated: false
+      description: ''
+      tags: []
+      parameters: []
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/WorkflowCreateRequest'
+              description: ''
+      responses:
+        '200':
+          description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResultProcessInstanceDTO'
+              example:
+                code: 0
+                msg: ''
+                data:
+                  id: ''
+                  processDefinitionId: ''
+                  processDefinitionKey: ''
+                  processDefinitionName: ''
+                  businessKey: ''
+                  startDate: ''
+                  startUserId: ''
+                  startActivityId: ''
+                  superProcessInstanceId: ''
+                  suspended: false
+                  tenantId: ''
+                  name: ''
+                  localizedName: ''
+                  description: ''
+                  localizedDescription: ''
+      security:
+        - BearerAuth: []
+  /api/workflows/my:
+    get:
+      summary: 获取我发起的流程
+      deprecated: false
+      description: ''
+      tags: []
+      parameters:
+        - name: type
+          in: query
+          description: ''
+          required: false
+          schema:
+            type: string
+        - name: status
+          in: query
+          description: ''
+          required: false
+          schema:
+            type: string
+        - name: page
+          in: query
+          description: ''
+          required: true
+          example: 1
+          schema:
+            type: integer
+        - name: limit
+          in: query
+          description: ''
+          required: true
+          example: 20
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResultIPageProcessInstanceDTO'
+              example:
+                code: 0
+                msg: ''
+                data:
+                  records:
+                    - id: ''
+                      processDefinitionId: ''
+                      processDefinitionKey: ''
+                      processDefinitionName: ''
+                      businessKey: ''
+                      startDate: ''
+                      startUserId: ''
+                      startActivityId: ''
+                      superProcessInstanceId: ''
+                      suspended: false
+                      tenantId: ''
+                      name: ''
+                      localizedName: ''
+                      description: ''
+                      localizedDescription: ''
+                  total: 0
+                  size: 0
+                  current: 0
+                  orders:
+                    - column: ''
+                      asc: false
+                  optimizeCountSql: false
+                  searchCount: false
+                  optimizeJoinOfCountSql: false
+                  maxLimit: 0
+                  countId: ''
+                  pages: 0
+      security:
+        - BearerAuth: []
+  /api/workflows/pending:
+    get:
+      summary: 获取待我审批的流程
+      deprecated: false
+      description: ''
+      tags: []
+      parameters:
+        - name: type
+          in: query
+          description: ''
+          required: false
+          schema:
+            type: string
+        - name: page
+          in: query
+          description: ''
+          required: true
+          example: 1
+          schema:
+            type: integer
+        - name: limit
+          in: query
+          description: ''
+          required: true
+          example: 20
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResultIPageTaskDTO'
+              example:
+                code: 0
+                msg: ''
+                data:
+                  records:
+                    - id: ''
+                      name: ''
+                      description: ''
+                      assignee: ''
+                      owner: ''
+                      processInstanceId: ''
+                      processDefinitionId: ''
+                      taskDefinitionKey: ''
+                      createTime: ''
+                      dueDate: ''
+                      priority: 0
+                      category: ''
+                      formKey: ''
+                      parentTaskId: ''
+                  total: 0
+                  size: 0
+                  current: 0
+                  orders:
+                    - column: ''
+                      asc: false
+                  optimizeCountSql: false
+                  searchCount: false
+                  optimizeJoinOfCountSql: false
+                  maxLimit: 0
+                  countId: ''
+                  pages: 0
+      security:
+        - BearerAuth: []
+  /api/workflows/{id}:
+    get:
+      summary: 获取流程详情
+      deprecated: false
+      description: ''
+      tags: []
+      parameters:
+        - name: id
+          in: path
+          description: 流程 ID
+          required: true
+          example: ''
+          schema:
+            type: string
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResultProcessInstanceDTO'
+              example:
+                code: 0
+                msg: ''
+                data:
+                  id: ''
+                  processDefinitionId: ''
+                  processDefinitionKey: ''
+                  processDefinitionName: ''
+                  businessKey: ''
+                  startDate: ''
+                  startUserId: ''
+                  startActivityId: ''
+                  superProcessInstanceId: ''
+                  suspended: false
+                  tenantId: ''
+                  name: ''
+                  localizedName: ''
+                  description: ''
+                  localizedDescription: ''
+      security:
+        - BearerAuth: []
+  /api/workflows/{id}/approve:
+    put:
+      summary: 审批通过
+      deprecated: false
+      description: ''
+      tags: []
+      parameters:
+        - name: id
+          in: path
+          description: 流程 ID
+          required: true
+          example: ''
+          schema:
+            type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/WorkflowApproveRequest'
+              description: ''
+      responses:
+        '200':
+          description: 审批成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResultString'
+              example:
+                code: 0
+                msg: ''
+                data: ''
+      security:
+        - BearerAuth: []
+  /api/workflows/{id}/reject:
+    put:
+      summary: 审批驳回
+      deprecated: false
+      description: ''
+      tags: []
+      parameters:
+        - name: id
+          in: path
+          description: 流程 ID
+          required: true
+          example: ''
+          schema:
+            type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/WorkflowRejectRequest'
+              description: ''
+      responses:
+        '200':
+          description: 驳回成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResultString'
+              example:
+                code: 0
+                msg: ''
+                data: ''
+      security:
+        - BearerAuth: []
+  /api/meeting-rooms:
+    get:
+      summary: 获取会议室列表
+      deprecated: false
+      description: ''
+      tags: []
+      parameters: []
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResultListMeetingRoom'
+              example:
+                code: 0
+                msg: ''
+                data:
+                  - id: 0
+                    name: ''
+                    capacity: 0
+                    equipment: ''
+                    location: ''
+                    description: ''
+      security:
+        - BearerAuth: []
+  /api/meetings:
+    get:
+      summary: 获取会议预约列表
+      deprecated: false
+      description: ''
+      tags: []
+      parameters:
+        - name: date
+          in: query
+          description: 日期，格式 YYYY-MM-DD
+          required: false
+          schema:
+            type: string
+        - name: roomId
+          in: query
+          description: 会议室 ID
+          required: false
+          schema:
+            type: string
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResultListMeeting'
+              example:
+                code: 0
+                msg: ''
+                data:
+                  - id: 0
+                    title: ''
+                    roomId: 0
+                    organizerId: ''
+                    attendees: ''
+                    date: ''
+                    startTime: ''
+                    endTime: ''
+                    description: ''
+                    status: ''
+                    createdAt: ''
+      security:
+        - BearerAuth: []
+    post:
+      summary: 创建会议预约
+      deprecated: false
+      description: ''
+      tags: []
+      parameters: []
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MeetingCreateRequest'
+              description: ''
+      responses:
+        '200':
+          description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResultMeeting'
+              example:
+                code: 0
+                msg: ''
+                data:
+                  id: 0
+                  title: ''
+                  roomId: 0
+                  organizerId: ''
+                  attendees: ''
+                  date: ''
+                  startTime: ''
+                  endTime: ''
+                  description: ''
+                  status: ''
+                  createdAt: ''
+      security:
+        - BearerAuth: []
+  /api/meetings/{id}:
+    delete:
+      summary: 取消会议预约
+      deprecated: false
+      description: ''
+      tags: []
+      parameters:
+        - name: id
+          in: path
+          description: 会议预约 ID
+          required: true
+          example: 0
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: 取消成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResultString'
+              example:
+                code: 0
+                msg: ''
+                data: ''
+      security:
+        - BearerAuth: []
+  /api/meetings/check-availability:
+    get:
+      summary: 检查会议室时间段是否可用
+      deprecated: false
+      description: ''
+      tags: []
+      parameters:
+        - name: roomId
+          in: query
+          description: 会议室 ID
+          required: true
+          schema:
+            type: integer
+        - name: date
+          in: query
+          description: 日期，格式 YYYY-MM-DD
+          required: true
+          schema:
+            type: string
+        - name: startTime
+          in: query
+          description: 开始时间，HH:mm
+          required: true
+          schema:
+            type: string
+        - name: endTime
+          in: query
+          description: 结束时间，HH:mm
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResultAvailabilityResponse'
+              example:
+                code: 0
+                msg: ''
+                data:
+                  available: false
+      security:
+        - BearerAuth: []
+  /api/notifications:
+    get:
+      summary: 获取通知列表
+      deprecated: false
+      description: ''
+      tags: []
+      parameters:
+        - name: type
+          in: query
+          description: ''
+          required: false
+          schema:
+            type: string
+        - name: isRead
+          in: query
+          description: ''
+          required: false
+          schema:
+            type: boolean
+        - name: page
+          in: query
+          description: ''
+          required: true
+          example: 1
+          schema:
+            type: integer
+        - name: limit
+          in: query
+          description: ''
+          required: true
+          example: 20
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResultNotificationsPage'
+              example:
+                code: 0
+                msg: ''
+                data:
+                  notifications:
+                    - id: 0
+                      title: ''
+                      content: ''
+                      type: ''
+                      isRead: false
+                      link: ''
+                      userId: ''
+                      createdAt: ''
+                  total: 0
+                  unreadCount: 0
+      security:
+        - BearerAuth: []
+  /api/notifications/{id}/read:
+    put:
+      summary: 标记单条通知为已读
+      deprecated: false
+      description: ''
+      tags: []
+      parameters:
+        - name: id
+          in: path
+          description: 通知 ID
+          required: true
+          example: 0
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResultNotification'
+              example:
+                code: 0
+                msg: ''
+                data:
+                  id: 0
+                  title: ''
+                  content: ''
+                  type: ''
+                  isRead: false
+                  link: ''
+                  userId: ''
+                  createdAt: ''
+      security:
+        - BearerAuth: []
+  /api/notifications/read-all:
+    put:
+      summary: 全部标记为已读
+      deprecated: false
+      description: ''
+      tags: []
+      parameters: []
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResultString'
+              example:
+                code: 0
+                msg: ''
+                data: ''
+      security:
+        - BearerAuth: []
+  /api/notifications/{id}:
+    delete:
+      summary: 删除通知
+      deprecated: false
+      description: ''
+      tags: []
+      parameters:
+        - name: id
+          in: path
+          description: 通知 ID
+          required: true
+          example: 0
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: 删除成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResultString'
+              example:
+                code: 0
+                msg: ''
+                data: ''
+      security:
+        - BearerAuth: []
+  /api/logout:
+    post:
+      summary: 用户退出登录接口
+      deprecated: false
+      description: ''
+      tags: []
+      parameters: []
+      responses:
+        '200':
+          description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResultString'
+                description: 退出结果
+              example:
+                code: 0
+                msg: ''
+                data: ''
+      security:
+        - BearerAuth: []
+  /api/login:
+    post:
+      summary: 用户登录接口
+      deprecated: false
+      description: ''
+      tags: []
+      parameters: []
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginRequest'
+              description: 登录请求参数
+      responses:
+        '200':
+          description: 登录成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResultLoginSuccessResponse'
+                description: 登录结果
+              example:
+                code: 0
+                msg: ''
+                data:
+                  userId: ''
+                  token: ''
+      security:
+        - BearerAuth: []
+  /api/me:
+    get:
+      summary: 获取当前登录用户信息
+      deprecated: false
+      description: ''
+      tags: []
+      parameters: []
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResultUser'
+                description: 当前登录用户信息
+              example:
+                code: 0
+                msg: ''
+                data:
+                  id: ''
+                  firstName: ''
+                  lastName: ''
+                  displayName: ''
+                  email: ''
+                  password: ''
+                  tenantId: ''
+                  pictureSet: false
+      security:
+        - BearerAuth: []
+components:
+  schemas:
+    LoginSuccessResponse:
+      type: object
+      properties:
+        userId:
+          type: string
+          description: ''
+        token:
+          type: string
+          description: ''
+    ResultMapObject:
+      type: object
+      properties:
+        code:
+          type: integer
+          description: ''
+        msg:
+          type: string
+          description: ''
+        data:
+          type: object
+          properties:
+            pendingApprovals:
+              type: integer
+            unreadNotifications:
+              type: integer
+            todayMeetings:
+              type: integer
+            totalEmployees:
+              type: integer
+            monthlyWorkflows:
+              type: integer
+            approvalRate:
+              type: integer
+          description: ''
+    ProcessInstanceDTO:
+      type: object
+      properties:
+        id:
+          type: string
+          description: ''
+        processDefinitionId:
+          type: string
+          description: ''
+        processDefinitionKey:
+          type: string
+          description: ''
+        processDefinitionName:
+          type: string
+          description: ''
+        businessKey:
+          type: string
+          description: ''
+        startDate:
+          type: string
+          description: ''
+        startUserId:
+          type: string
+          description: ''
+        startActivityId:
+          type: string
+          description: ''
+        superProcessInstanceId:
+          type: string
+          description: ''
+        suspended:
+          type: boolean
+          description: ''
+        tenantId:
+          type: string
+          description: ''
+        name:
+          type: string
+          description: ''
+        localizedName:
+          type: string
+          description: ''
+        description:
+          type: string
+          description: ''
+        localizedDescription:
+          type: string
+          description: ''
+    ResultLoginSuccessResponse:
+      type: object
+      properties:
+        code:
+          type: integer
+          description: ''
+        msg:
+          type: string
+          description: ''
+        data:
+          $ref: '#/components/schemas/LoginSuccessResponse'
+          description: ''
+    TaskDTO:
+      type: object
+      properties:
+        id:
+          type: string
+          description: ''
+        name:
+          type: string
+          description: ''
+        description:
+          type: string
+          description: ''
+        assignee:
+          type: string
+          description: ''
+        owner:
+          type: string
+          description: ''
+        processInstanceId:
+          type: string
+          description: ''
+        processDefinitionId:
+          type: string
+          description: ''
+        taskDefinitionKey:
+          type: string
+          description: ''
+        createTime:
+          type: string
+          description: ''
+        dueDate:
+          type: string
+          description: ''
+        priority:
+          type: integer
+          description: ''
+        category:
+          type: string
+          description: ''
+        formKey:
+          type: string
+          description: ''
+        parentTaskId:
+          type: string
+          description: ''
+    ResultListMeetingRoom:
+      type: object
+      properties:
+        code:
+          type: integer
+          description: ''
+        msg:
+          type: string
+          description: ''
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/MeetingRoom'
+            description: com.guhao.oahomework.entity.MeetingRoom
+          description: ''
+    OrderItem:
+      type: object
+      properties:
+        column:
+          type: string
+          description: 需要进行排序的字段
+        asc:
+          type: boolean
+          description: 是否正序排列，默认 true
+          default: true
+    User:
+      type: object
+      properties:
+        id:
+          type: string
+        firstName:
+          type: string
+        lastName:
+          type: string
+        displayName:
+          type: string
+        email:
+          type: string
+        password:
+          type: string
+        tenantId:
+          type: string
+        pictureSet:
+          type: boolean
+    ResultListTaskDTO:
+      type: object
+      properties:
+        code:
+          type: integer
+          description: ''
+        msg:
+          type: string
+          description: ''
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/TaskDTO'
+            description: com.guhao.oahomework.dto.TaskDTO
+          description: ''
+    ResultNotificationsPage:
+      type: object
+      properties:
+        code:
+          type: integer
+          description: ''
+        msg:
+          type: string
+          description: ''
+        data:
+          $ref: '#/components/schemas/NotificationsPage'
+          description: ''
+    IPageUser:
+      type: object
+      properties:
+        records:
+          type: array
+          items:
+            $ref: '#/components/schemas/User'
+            description: org.flowable.idm.api.User
+          description: 查询数据列表
+          default: Collections.emptyList()
+        total:
+          type: integer
+          description: 总数
+          format: int64
+          default: 0
+        size:
+          type: integer
+          description: 每页显示条数，默认 10
+          format: int64
+          default: 10
+        current:
+          type: integer
+          description: 当前页
+          format: int64
+          default: 1
+        orders:
+          type: array
+          items:
+            $ref: '#/components/schemas/OrderItem'
+            description: com.baomidou.mybatisplus.core.metadata.OrderItem
+          description: 排序字段信息
+          default: new ArrayList<>()
+        optimizeCountSql:
+          type: boolean
+          description: 自动优化 COUNT SQL
+          default: true
+        searchCount:
+          type: boolean
+          description: 是否进行 count 查询
+          default: true
+        optimizeJoinOfCountSql:
+          type: boolean
+          description: '{@link #optimizeJoinOfCountSql()}'
+          default: true
+        maxLimit:
+          type: integer
+          description: 单页分页条数限制
+          format: int64
+        countId:
+          type: string
+          description: countId
+        pages:
+          type: integer
+          format: int64
+    IPageProcessInstanceDTO:
+      type: object
+      properties:
+        records:
+          type: array
+          items:
+            $ref: '#/components/schemas/ProcessInstanceDTO'
+            description: com.guhao.oahomework.dto.ProcessInstanceDTO
+          description: 查询数据列表
+          default: Collections.emptyList()
+        total:
+          type: integer
+          description: 总数
+          format: int64
+          default: 0
+        size:
+          type: integer
+          description: 每页显示条数，默认 10
+          format: int64
+          default: 10
+        current:
+          type: integer
+          description: 当前页
+          format: int64
+          default: 1
+        orders:
+          type: array
+          items:
+            $ref: '#/components/schemas/OrderItem'
+            description: com.baomidou.mybatisplus.core.metadata.OrderItem
+          description: 排序字段信息
+          default: new ArrayList<>()
+        optimizeCountSql:
+          type: boolean
+          description: 自动优化 COUNT SQL
+          default: true
+        searchCount:
+          type: boolean
+          description: 是否进行 count 查询
+          default: true
+        optimizeJoinOfCountSql:
+          type: boolean
+          description: '{@link #optimizeJoinOfCountSql()}'
+          default: true
+        maxLimit:
+          type: integer
+          description: 单页分页条数限制
+          format: int64
+        countId:
+          type: string
+          description: countId
+        pages:
+          type: integer
+          format: int64
+    UserCreateRequest:
+      type: object
+      properties:
+        name:
+          type: string
+          description: ''
+        email:
+          type: string
+          description: ''
+        department:
+          type: string
+          description: ''
+        role:
+          type: string
+          description: ''
+        phone:
+          type: string
+          description: ''
+    ResultString:
+      type: object
+      properties:
+        code:
+          type: integer
+          description: ''
+        msg:
+          type: string
+          description: ''
+        data:
+          type: string
+          description: ''
+    ResultNotification:
+      type: object
+      properties:
+        code:
+          type: integer
+          description: ''
+        msg:
+          type: string
+          description: ''
+        data:
+          $ref: '#/components/schemas/Notification'
+          description: ''
+    ResultIPageUser:
+      type: object
+      properties:
+        code:
+          type: integer
+          description: ''
+        msg:
+          type: string
+          description: ''
+        data:
+          $ref: '#/components/schemas/IPageUser'
+          description: ''
+    ResultIPageProcessInstanceDTO:
+      type: object
+      properties:
+        code:
+          type: integer
+          description: ''
+        msg:
+          type: string
+          description: ''
+        data:
+          $ref: '#/components/schemas/IPageProcessInstanceDTO'
+          description: ''
+    UserUpdateRequest:
+      type: object
+      properties:
+        name:
+          type: string
+          description: ''
+        email:
+          type: string
+          description: ''
+        department:
+          type: string
+          description: ''
+        role:
+          type: string
+          description: ''
+        phone:
+          type: string
+          description: ''
+        status:
+          type: string
+          description: ''
+      description: 至少包含一个字段
+    ResultListMeeting:
+      type: object
+      properties:
+        code:
+          type: integer
+          description: ''
+        msg:
+          type: string
+          description: ''
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/Meeting'
+            description: com.guhao.oahomework.entity.Meeting
+          description: ''
+    ResultMeeting:
+      type: object
+      properties:
+        code:
+          type: integer
+          description: ''
+        msg:
+          type: string
+          description: ''
+        data:
+          $ref: '#/components/schemas/Meeting'
+          description: ''
+    ResultProcessInstanceDTO:
+      type: object
+      properties:
+        code:
+          type: integer
+          description: ''
+        msg:
+          type: string
+          description: ''
+        data:
+          $ref: '#/components/schemas/ProcessInstanceDTO'
+          description: ''
+    ResultUser:
+      type: object
+      properties:
+        code:
+          type: integer
+          description: ''
+        msg:
+          type: string
+          description: ''
+        data:
+          $ref: '#/components/schemas/User'
+          description: ''
+    ResultListNotification:
+      type: object
+      properties:
+        code:
+          type: integer
+          description: ''
+        msg:
+          type: string
+          description: ''
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/Notification'
+            description: com.guhao.oahomework.entity.Notification
+          description: ''
+    IPageTaskDTO:
+      type: object
+      properties:
+        records:
+          type: array
+          items:
+            $ref: '#/components/schemas/TaskDTO'
+            description: com.guhao.oahomework.dto.TaskDTO
+          description: 查询数据列表
+          default: Collections.emptyList()
+        total:
+          type: integer
+          description: 总数
+          format: int64
+          default: 0
+        size:
+          type: integer
+          description: 每页显示条数，默认 10
+          format: int64
+          default: 10
+        current:
+          type: integer
+          description: 当前页
+          format: int64
+          default: 1
+        orders:
+          type: array
+          items:
+            $ref: '#/components/schemas/OrderItem'
+            description: com.baomidou.mybatisplus.core.metadata.OrderItem
+          description: 排序字段信息
+          default: new ArrayList<>()
+        optimizeCountSql:
+          type: boolean
+          description: 自动优化 COUNT SQL
+          default: true
+        searchCount:
+          type: boolean
+          description: 是否进行 count 查询
+          default: true
+        optimizeJoinOfCountSql:
+          type: boolean
+          description: '{@link #optimizeJoinOfCountSql()}'
+          default: true
+        maxLimit:
+          type: integer
+          description: 单页分页条数限制
+          format: int64
+        countId:
+          type: string
+          description: countId
+        pages:
+          type: integer
+          format: int64
+    DepartmentCreateRequest: &ref_0
+      type: object
+      properties:
+        name:
+          type: string
+          description: ''
+        parentId:
+          type: string
+          description: ''
+        managerId:
+          type: string
+          description: ''
+    ResultAvailabilityResponse:
+      type: object
+      properties:
+        code:
+          type: integer
+          description: ''
+        msg:
+          type: string
+          description: ''
+        data:
+          $ref: '#/components/schemas/AvailabilityResponse'
+          description: ''
+    Group:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        type:
+          type: string
+    ResultIPageTaskDTO:
+      type: object
+      properties:
+        code:
+          type: integer
+          description: ''
+        msg:
+          type: string
+          description: ''
+        data:
+          $ref: '#/components/schemas/IPageTaskDTO'
+          description: ''
+    DepartmentUpdateRequest: *ref_0
+    ResultListGroup:
+      type: object
+      properties:
+        code:
+          type: integer
+          description: ''
+        msg:
+          type: string
+          description: ''
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/Group'
+            description: org.flowable.idm.api.Group
+          description: ''
+    ResultGroup:
+      type: object
+      properties:
+        code:
+          type: integer
+          description: ''
+        msg:
+          type: string
+          description: ''
+        data:
+          $ref: '#/components/schemas/Group'
+          description: ''
+    WorkflowCreateRequest:
+      type: object
+      properties:
+        type:
+          type: string
+          description: ''
+        title:
+          type: string
+          description: ''
+        description:
+          type: string
+          description: ''
+        amount:
+          type: number
+          description: ''
+        startDate:
+          type: string
+          description: ''
+        endDate:
+          type: string
+          description: ''
+    ResultListUser:
+      type: object
+      properties:
+        code:
+          type: integer
+          description: ''
+        msg:
+          type: string
+          description: ''
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/User'
+            description: org.flowable.idm.api.User
+          description: ''
+    WorkflowApproveRequest:
+      type: object
+      properties:
+        comment:
+          type: string
+          description: 审批意见，可选
+    WorkflowRejectRequest:
+      type: object
+      properties:
+        comment:
+          type: string
+          description: 驳回原因
+    MeetingRoom:
+      type: object
+      properties:
+        id:
+          type: integer
+          description: ''
+          format: int64
+        name:
+          type: string
+          description: ''
+        capacity:
+          type: integer
+          description: ''
+        equipment:
+          type: string
+          description: ''
+        location:
+          type: string
+          description: ''
+        description:
+          type: string
+          description: ''
+    Meeting:
+      type: object
+      properties:
+        id:
+          type: integer
+          description: ''
+          format: int64
+        title:
+          type: string
+          description: ''
+        roomId:
+          type: integer
+          description: ''
+          format: int64
+        organizerId:
+          type: string
+          description: ''
+        attendees:
+          type: string
+          description: ''
+        date:
+          type: string
+          description: ''
+        startTime:
+          type: string
+          description: ''
+        endTime:
+          type: string
+          description: ''
+        description:
+          type: string
+          description: ''
+        status:
+          type: string
+          description: ''
+        createdAt:
+          type: string
+          description: ''
+    MeetingCreateRequest:
+      type: object
+      properties:
+        title:
+          type: string
+          description: ''
+        roomId:
+          type: integer
+          description: ''
+          format: int64
+        date:
+          type: string
+          description: ''
+        startTime:
+          type: string
+          description: ''
+        endTime:
+          type: string
+          description: ''
+        attendees:
+          type: array
+          items:
+            type: string
+          description: ''
+        description:
+          type: string
+          description: ''
+    AvailabilityResponse:
+      type: object
+      properties:
+        available:
+          type: boolean
+          description: ''
+    Notification:
+      type: object
+      properties:
+        id:
+          type: integer
+          description: ''
+          format: int64
+        title:
+          type: string
+          description: ''
+        content:
+          type: string
+          description: ''
+        type:
+          type: string
+          description: ''
+        isRead:
+          type: boolean
+          description: ''
+        link:
+          type: string
+          description: ''
+        userId:
+          type: string
+          description: ''
+        createdAt:
+          type: string
+          description: ''
+    NotificationsPage:
+      type: object
+      properties:
+        notifications:
+          type: array
+          items:
+            $ref: '#/components/schemas/Notification'
+            description: com.guhao.oahomework.entity.Notification
+          description: ''
+        total:
+          type: integer
+          description: ''
+        unreadCount:
+          type: integer
+          description: ''
+    LoginRequest:
+      type: object
+      properties:
+        username:
+          type: string
+          description: ''
+        password:
+          type: string
+          description: ''
+  responses: {}
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+servers: []
+security:
+  - BearerAuth: []

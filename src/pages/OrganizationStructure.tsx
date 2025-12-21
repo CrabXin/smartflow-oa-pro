@@ -1,27 +1,28 @@
-import { useState } from 'react';
-import { 
-  ChevronRight, 
-  ChevronDown, 
-  Users, 
+import { useEffect, useState } from "react";
+import {
+  ChevronRight,
+  ChevronDown,
+  Users,
   Building2,
-  UserCircle,
   Plus,
   Edit,
   Trash2,
-  MoreHorizontal
-} from 'lucide-react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
-import { cn } from '@/lib/utils';
-import { mockDepartments, mockUsers, Department } from '@/data/mockData';
+  MoreHorizontal,
+} from "lucide-react";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { cn } from "@/lib/utils";
+import type { Department, User } from "@/data/mockData";
+import { useQuery } from "@tanstack/react-query";
+import { apiGetDepartments, apiGetDepartmentMembers } from "@/lib/api";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
-import { toast } from 'sonner';
+} from "@/components/ui/dropdown-menu";
+import { toast } from "sonner";
 
 /**
  * API 接口:
@@ -63,7 +64,6 @@ function DepartmentNode({
   const hasChildren = department.children && department.children.length > 0;
   const isExpanded = expandedIds.has(department.id);
   const isSelected = selectedId === department.id;
-  const manager = mockUsers.find(u => u.id === department.managerId);
 
   return (
     <div>
@@ -122,8 +122,20 @@ function DepartmentNode({
 }
 
 export default function OrganizationStructure() {
-  const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set(['1', '2', '4']));
-  const [selectedDepartment, setSelectedDepartment] = useState<Department | null>(mockDepartments[0]);
+  const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
+  const [selectedDepartment, setSelectedDepartment] = useState<Department | null>(null);
+
+  const { data: departments, isLoading } = useQuery<Department[]>({
+    queryKey: ["departments"],
+    queryFn: apiGetDepartments,
+  });
+
+  useEffect(() => {
+    if (!selectedDepartment && departments && departments.length > 0) {
+      setSelectedDepartment(departments[0]);
+      setExpandedIds(new Set([departments[0].id]));
+    }
+  }, [departments, selectedDepartment]);
 
   const handleToggle = (id: string) => {
     const newExpanded = new Set(expandedIds);
@@ -136,43 +148,30 @@ export default function OrganizationStructure() {
   };
 
   const handleAddDepartment = () => {
-    // API: POST /api/departments
-    toast.info('添加部门功能 - 接口预留: POST /api/departments');
+    // TODO: 调用 POST /api/departments 创建部门
+    toast.info("添加部门功能 - 请对接 POST /api/departments");
   };
 
   const handleEditDepartment = () => {
-    // API: PUT /api/departments/:id
-    toast.info('编辑部门功能 - 接口预留: PUT /api/departments/:id');
+    // TODO: 调用 PUT /api/departments/:id 更新部门
+    toast.info("编辑部门功能 - 请对接 PUT /api/departments/:id");
   };
 
   const handleDeleteDepartment = () => {
-    // API: DELETE /api/departments/:id
-    toast.info('删除部门功能 - 接口预留: DELETE /api/departments/:id');
+    // TODO: 调用 DELETE /api/departments/:id 删除部门
+    toast.info("删除部门功能 - 请对接 DELETE /api/departments/:id");
   };
 
-  // Get department members
-  const getDepartmentMembers = (deptName: string) => {
-    return mockUsers.filter(u => u.department === deptName);
-  };
+  const { data: selectedMembers = [] } = useQuery<User[]>({
+    queryKey: ["department-members", selectedDepartment?.id],
+    queryFn: () =>
+      selectedDepartment
+        ? apiGetDepartmentMembers(selectedDepartment.id)
+        : Promise.resolve([]),
+    enabled: !!selectedDepartment,
+  });
 
-  const selectedMembers = selectedDepartment 
-    ? getDepartmentMembers(selectedDepartment.name)
-    : [];
-
-  const manager = selectedDepartment 
-    ? mockUsers.find(u => u.id === selectedDepartment.managerId)
-    : null;
-
-  // Calculate total members (including sub-departments)
-  const calculateTotalMembers = (dept: Department): number => {
-    let total = dept.memberCount;
-    if (dept.children) {
-      dept.children.forEach(child => {
-        total += calculateTotalMembers(child);
-      });
-    }
-    return total;
-  };
+  const manager = selectedMembers.length > 0 ? selectedMembers[0] : null;
 
   return (
     <div className="grid gap-6 lg:grid-cols-3">
@@ -186,19 +185,25 @@ export default function OrganizationStructure() {
           </Button>
         </CardHeader>
         <CardContent className="p-2">
-          <div className="space-y-1">
-            {mockDepartments.map((dept) => (
-              <DepartmentNode
-                key={dept.id}
-                department={dept}
-                level={0}
-                expandedIds={expandedIds}
-                onToggle={handleToggle}
-                onSelect={setSelectedDepartment}
-                selectedId={selectedDepartment?.id || null}
-              />
-            ))}
-          </div>
+          {isLoading ? (
+            <div className="py-6 text-center text-muted-foreground">
+              加载中...
+            </div>
+          ) : (
+            <div className="space-y-1">
+              {(departments ?? []).map((dept) => (
+                <DepartmentNode
+                  key={dept.id}
+                  department={dept}
+                  level={0}
+                  expandedIds={expandedIds}
+                  onToggle={handleToggle}
+                  onSelect={setSelectedDepartment}
+                  selectedId={selectedDepartment?.id || null}
+                />
+              ))}
+            </div>
+          )}
         </CardContent>
       </Card>
 
@@ -211,10 +216,7 @@ export default function OrganizationStructure() {
             </CardTitle>
             {selectedDepartment && (
               <p className="text-sm text-muted-foreground mt-1">
-                共 {selectedDepartment.memberCount} 名成员
-                {selectedDepartment.children && selectedDepartment.children.length > 0 && (
-                  <span> · 含子部门共 {calculateTotalMembers(selectedDepartment)} 人</span>
-                )}
+                共 {selectedMembers.length} 名成员
               </p>
             )}
           </div>

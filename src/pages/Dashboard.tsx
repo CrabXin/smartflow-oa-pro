@@ -1,20 +1,32 @@
-import { 
-  FileCheck, 
-  Calendar, 
-  Bell, 
-  Users, 
+import { useEffect, useState } from 'react';
+import {
+  FileCheck,
+  Calendar,
+  Bell,
+  Users,
   TrendingUp,
   Clock,
   CheckCircle2,
   XCircle,
-  ArrowRight
+  ArrowRight,
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { Link } from 'react-router-dom';
-import { dashboardStats, mockWorkflows, mockMeetings, mockNotifications } from '@/data/mockData';
+import { useQuery } from '@tanstack/react-query';
+import { useAuth } from '@/auth/AuthContext';
+import type { Meeting, Notification } from '@/data/mockData';
+import {
+  apiGetDashboardStats,
+  apiGetDashboardRecentWorkflows,
+  apiGetTodayMeetings,
+  apiGetDashboardRecentNotifications,
+  apiGetCurrentUser,
+  type DashboardStats,
+  type DashboardTask,
+} from '@/lib/api';
 
 /**
  * API 接口:
@@ -33,41 +45,6 @@ import { dashboardStats, mockWorkflows, mockMeetings, mockNotifications } from '
  * GET /api/dashboard/recent-notifications - 获取最近通知
  */
 
-const statCards = [
-  {
-    title: '待审批',
-    value: dashboardStats.pendingApprovals,
-    icon: FileCheck,
-    color: 'text-primary',
-    bgColor: 'bg-primary/10',
-    href: '/workflow',
-  },
-  {
-    title: '今日会议',
-    value: dashboardStats.todayMeetings,
-    icon: Calendar,
-    color: 'text-chart-2',
-    bgColor: 'bg-chart-2/10',
-    href: '/meetings',
-  },
-  {
-    title: '未读通知',
-    value: dashboardStats.unreadNotifications,
-    icon: Bell,
-    color: 'text-chart-3',
-    bgColor: 'bg-chart-3/10',
-    href: '/notifications',
-  },
-  {
-    title: '员工总数',
-    value: dashboardStats.totalEmployees,
-    icon: Users,
-    color: 'text-chart-4',
-    bgColor: 'bg-chart-4/10',
-    href: '/users',
-  },
-];
-
 const workflowTypeMap: Record<string, string> = {
   leave: '请假',
   expense: '报销',
@@ -83,18 +60,115 @@ const statusConfig: Record<string, { label: string; variant: 'default' | 'second
 };
 
 export default function Dashboard() {
-  const pendingWorkflows = mockWorkflows.filter(w => w.status === 'pending' || w.status === 'processing');
-  const todayMeetings = mockMeetings.filter(m => m.date === '2024-12-18');
-  const recentNotifications = mockNotifications.slice(0, 3);
+  const { user: authUser } = useAuth();
+  const [stats, setStats] = useState<DashboardStats>({
+    pendingApprovals: 0,
+    todayMeetings: 0,
+    unreadNotifications: 0,
+    totalEmployees: 0,
+    monthlyWorkflows: 0,
+    approvalRate: 0,
+  });
+  const [workflows, setWorkflows] = useState<DashboardTask[]>([]);
+  const [todayMeetings, setTodayMeetings] = useState<Meeting[]>([]);
+  const [recentNotifications, setRecentNotifications] = useState<Notification[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const { data: currentUser } = useQuery({
+    queryKey: ['me'],
+    queryFn: apiGetCurrentUser,
+    enabled: !!authUser,
+  });
+
+  useEffect(() => {
+    const load = async () => {
+      try {
+        setLoading(true);
+        const todayStr = new Date().toISOString().split('T')[0];
+        const [statsRes, workflowsRes, meetingsRes, notificationsRes] = await Promise.all([
+          apiGetDashboardStats(),
+          apiGetDashboardRecentWorkflows(5),
+          apiGetTodayMeetings(todayStr),
+          apiGetDashboardRecentNotifications(3),
+        ]);
+        setStats(statsRes);
+        setWorkflows(workflowsRes);
+        setTodayMeetings(meetingsRes);
+        setRecentNotifications(notificationsRes);
+        setError(null);
+      } catch (e) {
+        console.error(e);
+        setError((e as Error).message || '加载仪表盘数据失败');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    load();
+  }, []);
+
+  // DashboardTask 不包含 status，所以显示所有返回的流程
+  const pendingWorkflows = workflows;
+
+  const statCards = [
+    {
+      title: '待审批',
+      value: stats.pendingApprovals,
+      icon: FileCheck,
+      color: 'text-primary',
+      bgColor: 'bg-primary/10',
+      href: '/workflow',
+    },
+    {
+      title: '今日会议',
+      value: stats.todayMeetings || todayMeetings.length,
+      icon: Calendar,
+      color: 'text-chart-2',
+      bgColor: 'bg-chart-2/10',
+      href: '/meetings',
+    },
+    {
+      title: '未读通知',
+      value: stats.unreadNotifications,
+      icon: Bell,
+      color: 'text-chart-3',
+      bgColor: 'bg-chart-3/10',
+      href: '/notifications',
+    },
+    {
+      title: '员工总数',
+      value: stats.totalEmployees,
+      icon: Users,
+      color: 'text-chart-4',
+      bgColor: 'bg-chart-4/10',
+      href: '/users',
+    },
+  ];
+
+  const today = new Date();
+  const dateText = `${today.getFullYear()}年${today.getMonth() + 1}月${today.getDate()}日`;
+  const weekMap = ['日', '一', '二', '三', '四', '五', '六'];
+  const weekdayText = `星期${weekMap[today.getDay()]}`;
 
   return (
     <div className="space-y-6">
       {/* Welcome section */}
       <div className="rounded-xl bg-gradient-to-r from-primary/20 via-chart-1/10 to-chart-2/10 p-6">
-        <h2 className="text-2xl font-bold text-foreground">早上好，张伟！</h2>
+        <h2 className="text-2xl font-bold text-foreground">
+          早上好，{currentUser?.name ?? authUser?.name ?? '用户'}！
+        </h2>
         <p className="mt-1 text-muted-foreground">
-          今天是 2024年12月18日，星期三。您有 {dashboardStats.pendingApprovals} 个待审批任务。
+          今天是 {dateText}，{weekdayText}。您有 {stats.pendingApprovals} 个待审批任务。
         </p>
+        {loading && (
+          <p className="mt-1 text-xs text-muted-foreground">正在加载最新数据...</p>
+        )}
+        {error && (
+          <p className="mt-1 text-xs text-destructive">
+            {error}
+          </p>
+        )}
       </div>
 
       {/* Stats cards */}
@@ -131,16 +205,16 @@ export default function Dashboard() {
             <div>
               <div className="flex items-center justify-between mb-2">
                 <span className="text-sm text-muted-foreground">流程处理量</span>
-                <span className="text-sm font-medium">{dashboardStats.monthlyWorkflows} 个</span>
+                <span className="text-sm font-medium">{stats.monthlyWorkflows} 个</span>
               </div>
               <Progress value={70} className="h-2" />
             </div>
             <div>
               <div className="flex items-center justify-between mb-2">
                 <span className="text-sm text-muted-foreground">审批通过率</span>
-                <span className="text-sm font-medium">{dashboardStats.approvalRate}%</span>
+                <span className="text-sm font-medium">{stats.approvalRate}%</span>
               </div>
-              <Progress value={dashboardStats.approvalRate} className="h-2" />
+              <Progress value={stats.approvalRate} className="h-2" />
             </div>
             <div>
               <div className="flex items-center justify-between mb-2">
@@ -179,18 +253,16 @@ export default function Dashboard() {
                   >
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2">
-                        <span className="font-medium text-foreground truncate">{workflow.title}</span>
-                        <Badge variant={statusConfig[workflow.status].variant}>
-                          {statusConfig[workflow.status].label}
-                        </Badge>
+                        <span className="font-medium text-foreground truncate">{workflow.name}</span>
                       </div>
                       <div className="flex items-center gap-4 mt-1 text-sm text-muted-foreground">
-                        <span>{workflow.applicant}</span>
-                        <span>·</span>
-                        <span>{workflowTypeMap[workflow.type]}</span>
-                        <span>·</span>
-                        <span>{workflow.createdAt}</span>
+                        {workflow.assignee && <span>{workflow.assignee}</span>}
+                        {workflow.assignee && workflow.createTime && <span>·</span>}
+                        {workflow.createTime && <span>{workflow.createTime}</span>}
                       </div>
+                      {workflow.description && (
+                        <p className="text-sm text-muted-foreground mt-1 line-clamp-1">{workflow.description}</p>
+                      )}
                     </div>
                   </div>
                 ))

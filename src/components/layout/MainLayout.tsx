@@ -1,48 +1,84 @@
-import { useState } from 'react';
-import { Link, useLocation } from 'react-router-dom';
-import { 
-  LayoutDashboard, 
-  Users, 
-  Building2, 
-  FileCheck, 
+import { useState } from "react";
+import { Link, useLocation, useNavigate } from "react-router-dom";
+import {
+  LayoutDashboard,
+  Users,
+  Building2,
+  FileCheck,
   Calendar,
   Bell,
   Menu,
   X,
   LogOut,
   Settings,
-  ChevronDown
-} from 'lucide-react';
-import { cn } from '@/lib/utils';
-import { currentUser, mockNotifications } from '@/data/mockData';
-import { Avatar, AvatarFallback } from '@/components/ui/avatar';
-import { Button } from '@/components/ui/button';
+  ChevronDown,
+} from "lucide-react";
+import { cn } from "@/lib/utils";
+import type { User } from "@/data/mockData";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
-import { Badge } from '@/components/ui/badge';
+} from "@/components/ui/dropdown-menu";
+import { Badge } from "@/components/ui/badge";
+import { useQuery } from "@tanstack/react-query";
+import {
+  apiGetCurrentUser,
+  apiGetNotifications,
+  type NotificationsPage,
+} from "@/lib/api";
+import { useAuth } from "@/auth/AuthContext";
+import { toast } from "sonner";
 
 interface MainLayoutProps {
   children: React.ReactNode;
 }
 
 const navigation = [
-  { name: '仪表盘', href: '/', icon: LayoutDashboard },
-  { name: '用户管理', href: '/users', icon: Users },
-  { name: '组织架构', href: '/organization', icon: Building2 },
-  { name: '流程审批', href: '/workflow', icon: FileCheck },
-  { name: '会议预约', href: '/meetings', icon: Calendar },
-  { name: '通知中心', href: '/notifications', icon: Bell },
+  { name: "仪表盘", href: "/", icon: LayoutDashboard },
+  { name: "用户管理", href: "/users", icon: Users },
+  { name: "组织架构", href: "/organization", icon: Building2 },
+  { name: "流程审批", href: "/workflow", icon: FileCheck },
+  { name: "会议预约", href: "/meetings", icon: Calendar },
+  { name: "通知中心", href: "/notifications", icon: Bell },
 ];
 
 export default function MainLayout({ children }: MainLayoutProps) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const location = useLocation();
-  const unreadCount = mockNotifications.filter(n => !n.isRead).length;
+  const navigate = useNavigate();
+  const { user: authUser, logout } = useAuth();
+
+  const { data: currentUser } = useQuery<User | undefined>({
+    queryKey: ["me"],
+    queryFn: apiGetCurrentUser,
+    enabled: !!authUser,
+  });
+
+  const { data: notificationsPage } = useQuery<NotificationsPage>({
+    queryKey: ["notifications"],
+    queryFn: () => apiGetNotifications({ page: 1, limit: 50 }),
+    enabled: !!authUser,
+  });
+
+  const handleLogout = async () => {
+    try {
+      await logout();
+      toast.success("已退出登录");
+      navigate("/login", { replace: true });
+    } catch (error) {
+      toast.error("退出登录失败");
+    }
+  };
+
+  const unreadCount = notificationsPage?.unreadCount ?? 0;
+  const userName = currentUser?.name ?? authUser?.name ?? "未登录";
+  const userAvatar = currentUser?.avatar ?? authUser?.avatar ?? "U";
+  const userDept = currentUser?.department ?? authUser?.department ?? "";
 
   return (
     <div className="min-h-screen bg-background">
@@ -64,11 +100,13 @@ export default function MainLayout({ children }: MainLayoutProps) {
         <div className="flex h-full flex-col">
           {/* Logo */}
           <div className="flex h-16 items-center justify-between px-6 border-b border-border">
-            <Link to="/" className="flex items-center gap-2">
+              <Link to="/" className="flex items-center gap-2">
               <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary">
                 <FileCheck className="h-5 w-5 text-primary-foreground" />
               </div>
-              <span className="text-lg font-semibold text-foreground">SmartFlow</span>
+              <span className="text-lg font-semibold text-foreground">
+                SmartFlow
+              </span>
             </Link>
             <Button
               variant="ghost"
@@ -98,7 +136,7 @@ export default function MainLayout({ children }: MainLayoutProps) {
                 >
                   <item.icon className="h-5 w-5" />
                   {item.name}
-                  {item.name === '通知中心' && unreadCount > 0 && (
+                  {item.name === "通知中心" && unreadCount > 0 && (
                     <Badge variant="destructive" className="ml-auto h-5 min-w-5 px-1.5">
                       {unreadCount}
                     </Badge>
@@ -113,12 +151,16 @@ export default function MainLayout({ children }: MainLayoutProps) {
             <div className="flex items-center gap-3">
               <Avatar className="h-9 w-9">
                 <AvatarFallback className="bg-primary/10 text-primary text-sm">
-                  {currentUser.avatar}
+                  {userAvatar}
                 </AvatarFallback>
               </Avatar>
               <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium text-foreground truncate">{currentUser.name}</p>
-                <p className="text-xs text-muted-foreground truncate">{currentUser.department}</p>
+                <p className="text-sm font-medium text-foreground truncate">
+                  {userName}
+                </p>
+                <p className="text-xs text-muted-foreground truncate">
+                  {userDept}
+                </p>
               </div>
             </div>
           </div>
@@ -163,11 +205,11 @@ export default function MainLayout({ children }: MainLayoutProps) {
                 <Button variant="ghost" className="gap-2 px-2">
                   <Avatar className="h-8 w-8">
                     <AvatarFallback className="bg-primary/10 text-primary text-xs">
-                      {currentUser.avatar}
+                      {userAvatar}
                     </AvatarFallback>
                   </Avatar>
                   <span className="hidden sm:inline-block text-sm font-medium">
-                    {currentUser.name}
+                    {userName}
                   </span>
                   <ChevronDown className="h-4 w-4 text-muted-foreground" />
                 </Button>
@@ -178,7 +220,7 @@ export default function MainLayout({ children }: MainLayoutProps) {
                   设置
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
-                <DropdownMenuItem className="text-destructive">
+                <DropdownMenuItem className="text-destructive" onClick={handleLogout}>
                   <LogOut className="mr-2 h-4 w-4" />
                   退出登录
                 </DropdownMenuItem>

@@ -15,7 +15,14 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { cn } from '@/lib/utils';
-import { mockNotifications, Notification } from '@/data/mockData';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import type { Notification } from '@/data/mockData';
+import { 
+  apiGetNotifications, 
+  apiMarkNotificationAsRead, 
+  apiMarkAllNotificationsAsRead, 
+  apiDeleteNotification,
+} from '@/lib/api';
 import { Link } from 'react-router-dom';
 import { toast } from 'sonner';
 
@@ -43,34 +50,74 @@ const typeConfig: Record<string, { label: string; icon: typeof Bell; color: stri
 };
 
 export default function NotificationCenter() {
-  const [notifications, setNotifications] = useState<Notification[]>(mockNotifications);
+  const queryClient = useQueryClient();
   const [activeTab, setActiveTab] = useState('all');
+  const [page, setPage] = useState(1);
 
-  const unreadCount = notifications.filter(n => !n.isRead).length;
+  const { data: notificationsPage, isLoading } = useQuery({
+    queryKey: ['notifications', { 
+      type: activeTab !== 'all' && activeTab !== 'unread' ? activeTab : undefined,
+      isRead: activeTab === 'unread' ? false : undefined,
+      page,
+      limit: 50,
+    }],
+    queryFn: () => apiGetNotifications({
+      type: activeTab !== 'all' && activeTab !== 'unread' 
+        ? (activeTab as 'workflow' | 'meeting' | 'system' | 'announcement') 
+        : undefined,
+      isRead: activeTab === 'unread' ? false : undefined,
+      page,
+      limit: 50,
+    }),
+  });
 
-  const filteredNotifications = activeTab === 'all' 
-    ? notifications 
-    : activeTab === 'unread'
-    ? notifications.filter(n => !n.isRead)
-    : notifications.filter(n => n.type === activeTab);
+  const notifications = notificationsPage?.notifications ?? [];
+  const unreadCount = notificationsPage?.unreadCount ?? 0;
+
+  const markAsReadMutation = useMutation({
+    mutationFn: (id: string) => apiMarkNotificationAsRead(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['notifications'] });
+    },
+    onError: (error: unknown) => {
+      toast.error((error as Error).message || '标记失败');
+    },
+  });
+
+  const markAllAsReadMutation = useMutation({
+    mutationFn: () => apiMarkAllNotificationsAsRead(),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['notifications'] });
+      toast.success('已全部标记为已读');
+    },
+    onError: (error: unknown) => {
+      toast.error((error as Error).message || '操作失败');
+    },
+  });
+
+  const deleteNotificationMutation = useMutation({
+    mutationFn: (id: string) => apiDeleteNotification(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['notifications'] });
+      toast.success('通知已删除');
+    },
+    onError: (error: unknown) => {
+      toast.error((error as Error).message || '删除失败');
+    },
+  });
 
   const handleMarkAsRead = (id: string) => {
-    // API: PUT /api/notifications/:id/read
-    setNotifications(notifications.map(n => 
-      n.id === id ? { ...n, isRead: true } : n
-    ));
+    markAsReadMutation.mutate(id);
   };
 
   const handleMarkAllAsRead = () => {
-    // API: PUT /api/notifications/read-all
-    setNotifications(notifications.map(n => ({ ...n, isRead: true })));
-    toast.success('已全部标记为已读');
+    markAllAsReadMutation.mutate();
   };
 
   const handleDelete = (id: string) => {
-    // API: DELETE /api/notifications/:id
-    setNotifications(notifications.filter(n => n.id !== id));
-    toast.success('通知已删除');
+    if (confirm('确定要删除该通知吗？')) {
+      deleteNotificationMutation.mutate(id);
+    }
   };
 
   return (
@@ -87,10 +134,10 @@ export default function NotificationCenter() {
           variant="outline" 
           className="gap-2"
           onClick={handleMarkAllAsRead}
-          disabled={unreadCount === 0}
+          disabled={unreadCount === 0 || markAllAsReadMutation.isPending}
         >
           <CheckCheck className="h-4 w-4" />
-          全部标记已读
+          {markAllAsReadMutation.isPending ? '处理中...' : '全部标记已读'}
         </Button>
       </div>
 
@@ -148,14 +195,19 @@ export default function NotificationCenter() {
           </Tabs>
         </CardHeader>
         <CardContent>
-          {filteredNotifications.length === 0 ? (
+          {isLoading ? (
+            <div className="text-center py-12 text-muted-foreground">
+              <Bell className="h-12 w-12 mx-auto mb-3 opacity-50 animate-pulse" />
+              <p>加载中...</p>
+            </div>
+          ) : notifications.length === 0 ? (
             <div className="text-center py-12 text-muted-foreground">
               <Bell className="h-12 w-12 mx-auto mb-3 opacity-50" />
               <p>暂无通知</p>
             </div>
           ) : (
             <div className="space-y-2">
-              {filteredNotifications.map((notification) => {
+              {notifications.map((notification) => {
                 const config = typeConfig[notification.type];
                 return (
                   <div
@@ -201,6 +253,7 @@ export default function NotificationCenter() {
                               e.stopPropagation();
                               handleDelete(notification.id);
                             }}
+                            disabled={deleteNotificationMutation.isPending}
                           >
                             <Trash2 className="h-4 w-4" />
                           </Button>

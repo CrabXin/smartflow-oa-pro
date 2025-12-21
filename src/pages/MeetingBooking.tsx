@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { 
   Plus, 
   Calendar,
@@ -32,7 +32,16 @@ import {
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
-import { mockMeetingRooms, mockMeetings, Meeting, MeetingRoom, currentUser } from '@/data/mockData';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useAuth } from '@/auth/AuthContext';
+import type { Meeting, MeetingRoom } from '@/data/mockData';
+import { 
+  apiGetMeetingRooms, 
+  apiGetMeetings, 
+  apiCreateMeeting, 
+  apiDeleteMeeting,
+  type MeetingCreatePayload,
+} from '@/lib/api';
 import { toast } from 'sonner';
 
 /**
@@ -73,11 +82,17 @@ const timeSlots = [
 const weekDays = ['日', '一', '二', '三', '四', '五', '六'];
 
 export default function MeetingBooking() {
-  const [meetings, setMeetings] = useState<Meeting[]>(mockMeetings);
-  const [selectedDate, setSelectedDate] = useState('2024-12-18');
+  const { user: currentUser } = useAuth();
+  const queryClient = useQueryClient();
+  const today = new Date();
+  const [selectedDate, setSelectedDate] = useState(today.toISOString().split('T')[0]);
   const [selectedRoom, setSelectedRoom] = useState<MeetingRoom | null>(null);
   const [isBookDialogOpen, setIsBookDialogOpen] = useState(false);
-  const [currentWeekStart, setCurrentWeekStart] = useState(new Date('2024-12-16'));
+  const [currentWeekStart, setCurrentWeekStart] = useState(() => {
+    const start = new Date(today);
+    start.setDate(start.getDate() - start.getDay());
+    return start;
+  });
   
   // Booking form state
   const [bookingForm, setBookingForm] = useState({
@@ -102,6 +117,26 @@ export default function MeetingBooking() {
   };
 
   const weekDates = getWeekDates();
+
+  // Fetch meeting rooms
+  const { data: meetingRooms = [] } = useQuery({
+    queryKey: ['meeting-rooms'],
+    queryFn: apiGetMeetingRooms,
+  });
+
+  // Fetch meetings for the current week
+  const weekDateRange = useMemo(() => {
+    const dates = getWeekDates();
+    return {
+      start: formatDate(dates[0]),
+      end: formatDate(dates[6]),
+    };
+  }, [currentWeekStart]);
+
+  const { data: meetings = [] } = useQuery({
+    queryKey: ['meetings', { date: weekDateRange.start }],
+    queryFn: () => apiGetMeetings({ date: weekDateRange.start }),
+  });
 
   const navigateWeek = (direction: 'prev' | 'next') => {
     const newStart = new Date(currentWeekStart);
@@ -134,50 +169,79 @@ export default function MeetingBooking() {
     return roomMeetings.find(meeting => meeting.startTime === time);
   };
 
-  const handleBook = () => {
-    // API: POST /api/meetings
-    const room = mockMeetingRooms.find(r => r.id === bookingForm.roomId);
-    if (!room) return;
+  const createMeetingMutation = useMutation({
+    mutationFn: (payload: MeetingCreatePayload) => apiCreateMeeting(payload),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['meetings'] });
+      setIsBookDialogOpen(false);
+      setBookingForm({
+        title: '',
+        roomId: '',
+        date: selectedDate,
+        startTime: '09:00',
+        endTime: '10:00',
+        attendees: '',
+        description: '',
+      });
+      toast.success('会议预约成功');
+    },
+    onError: (error: unknown) => {
+      toast.error((error as Error).message || '预约失败');
+    },
+  });
 
-    const newMeeting: Meeting = {
-      id: String(Date.now()),
+  const deleteMeetingMutation = useMutation({
+    mutationFn: (id: string) => apiDeleteMeeting(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['meetings'] });
+      toast.success('会议已取消');
+    },
+    onError: (error: unknown) => {
+      toast.error((error as Error).message || '取消失败');
+    },
+  });
+
+  const handleBook = () => {
+    if (!bookingForm.title || !bookingForm.roomId || !bookingForm.date) {
+      toast.error('请填写完整的预约信息');
+      return;
+    }
+    if (!currentUser) {
+      toast.error('请先登录');
+      return;
+    }
+
+    const payload: MeetingCreatePayload = {
       title: bookingForm.title,
       roomId: bookingForm.roomId,
-      roomName: room.name,
-      organizer: currentUser.name,
-      organizerId: currentUser.id,
-      attendees: bookingForm.attendees.split(',').map(a => a.trim()).filter(Boolean),
       date: bookingForm.date,
       startTime: bookingForm.startTime,
       endTime: bookingForm.endTime,
+      attendees: bookingForm.attendees.split(',').map(a => a.trim()).filter(Boolean),
       description: bookingForm.description,
-      status: 'upcoming',
     };
 
-    setMeetings([...meetings, newMeeting]);
-    setIsBookDialogOpen(false);
-    setBookingForm({
-      title: '',
-      roomId: '',
-      date: selectedDate,
-      startTime: '09:00',
-      endTime: '10:00',
-      attendees: '',
-      description: '',
-    });
-    toast.success('会议预约成功');
+    createMeetingMutation.mutate(payload);
   };
 
   const handleCancelMeeting = (meetingId: string) => {
-    // API: DELETE /api/meetings/:id
-    setMeetings(meetings.filter(m => m.id !== meetingId));
-    toast.success('会议已取消');
+    if (confirm('确定要取消该会议吗？')) {
+      deleteMeetingMutation.mutate(meetingId);
+    }
   };
 
   // Get today's meetings for the current user
   const myTodayMeetings = meetings.filter(
-    m => m.date === selectedDate && (m.organizerId === currentUser.id || m.attendees.includes(currentUser.name))
+    m => m.date === selectedDate && 
+    (m.organizerId === currentUser?.id || m.attendees.includes(currentUser?.name || ''))
   );
+
+  // Set first room as selected by default
+  useEffect(() => {
+    if (meetingRooms.length > 0 && !selectedRoom) {
+      setSelectedRoom(meetingRooms[0]);
+    }
+  }, [meetingRooms, selectedRoom]);
 
   return (
     <div className="space-y-6">
@@ -223,7 +287,7 @@ export default function MeetingBooking() {
                     <SelectValue placeholder="选择会议室" />
                   </SelectTrigger>
                   <SelectContent>
-                    {mockMeetingRooms.map((room) => (
+                    {meetingRooms.map((room) => (
                       <SelectItem key={room.id} value={room.id}>
                         {room.name} ({room.capacity}人)
                       </SelectItem>
@@ -298,8 +362,8 @@ export default function MeetingBooking() {
               <Button variant="outline" onClick={() => setIsBookDialogOpen(false)}>
                 取消
               </Button>
-              <Button onClick={handleBook}>
-                确认预约
+              <Button onClick={handleBook} disabled={createMeetingMutation.isPending}>
+                {createMeetingMutation.isPending ? '预约中...' : '确认预约'}
               </Button>
             </DialogFooter>
           </DialogContent>
@@ -314,7 +378,13 @@ export default function MeetingBooking() {
               <CardTitle className="text-base">会议室</CardTitle>
             </CardHeader>
             <CardContent className="space-y-3">
-              {mockMeetingRooms.map((room) => (
+              {meetingRooms.length === 0 ? (
+                <div className="text-center py-6 text-muted-foreground">
+                  <Monitor className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                  <p className="text-sm">暂无会议室</p>
+                </div>
+              ) : (
+                meetingRooms.map((room) => (
                 <div
                   key={room.id}
                   className={`p-3 rounded-lg border cursor-pointer transition-colors ${
@@ -340,7 +410,8 @@ export default function MeetingBooking() {
                     ))}
                   </div>
                 </div>
-              ))}
+                ))
+              )}
             </CardContent>
           </Card>
 
@@ -407,8 +478,9 @@ export default function MeetingBooking() {
                   <div className="grid grid-cols-8 gap-1 mb-2">
                     <div className="p-2 text-center text-sm text-muted-foreground">时间</div>
                     {weekDates.map((date) => {
-                      const isToday = formatDate(date) === '2024-12-18';
-                      const isSelected = formatDate(date) === selectedDate;
+                      const dateStr = formatDate(date);
+                      const isToday = dateStr === today.toISOString().split('T')[0];
+                      const isSelected = dateStr === selectedDate;
                       return (
                         <div
                           key={formatDate(date)}
@@ -416,7 +488,7 @@ export default function MeetingBooking() {
                             isSelected ? 'bg-primary text-primary-foreground' : 
                             isToday ? 'bg-primary/10' : 'hover:bg-muted'
                           }`}
-                          onClick={() => setSelectedDate(formatDate(date))}
+                          onClick={() => setSelectedDate(dateStr)}
                         >
                           <div className="text-xs text-inherit opacity-80">
                             周{weekDays[date.getDay()]}
@@ -532,12 +604,13 @@ export default function MeetingBooking() {
                         </div>
                       </div>
                     </div>
-                    {meeting.organizerId === currentUser.id && (
+                    {meeting.organizerId === currentUser?.id && (
                       <Button
                         variant="ghost"
                         size="icon"
                         className="text-destructive hover:text-destructive"
                         onClick={() => handleCancelMeeting(meeting.id)}
+                        disabled={deleteMeetingMutation.isPending}
                       >
                         <Trash2 className="h-4 w-4" />
                       </Button>

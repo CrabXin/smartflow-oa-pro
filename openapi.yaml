@@ -1,0 +1,1331 @@
+openapi: 3.0.3
+info:
+  title: SmartFlow OA API
+  version: 1.0.0
+  description: |
+    SmartFlow OA 系统后端接口定义。
+    本文档基于当前前端项目的页面逻辑与 mock 数据整理而来，可用于 Swagger UI 展示与 Spring Boot 代码生成。
+
+servers:
+  - url: http://localhost:8080
+    description: 本地开发环境
+
+security:
+  - BearerAuth: []
+
+tags:
+  - name: Dashboard
+    description: 仪表盘相关接口
+  - name: Users
+    description: 用户管理
+  - name: Departments
+    description: 组织架构 / 部门管理
+  - name: Workflows
+    description: 流程审批
+  - name: Meetings
+    description: 会议室与会议预约
+  - name: Notifications
+    description: 通知中心
+  - name: Auth
+    description: 认证与当前用户（可选）
+
+paths:
+  /api/dashboard/stats:
+    get:
+      tags: [Dashboard]
+      summary: 获取仪表盘统计数据
+      operationId: getDashboardStats
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DashboardStats'
+
+  /api/dashboard/recent-workflows:
+    get:
+      tags: [Dashboard, Workflows]
+      summary: 获取最近流程
+      operationId: getDashboardRecentWorkflows
+      parameters:
+        - name: limit
+          in: query
+          description: 返回条数
+          required: false
+          schema:
+            type: integer
+            format: int32
+            minimum: 1
+            default: 5
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Workflow'
+
+  /api/dashboard/today-meetings:
+    get:
+      tags: [Dashboard, Meetings]
+      summary: 获取今日会议
+      operationId: getDashboardTodayMeetings
+      parameters:
+        - name: date
+          in: query
+          description: 指定日期，默认当前日期，格式 YYYY-MM-DD
+          required: false
+          schema:
+            type: string
+            format: date
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Meeting'
+
+  /api/dashboard/recent-notifications:
+    get:
+      tags: [Dashboard, Notifications]
+      summary: 获取最新通知
+      operationId: getDashboardRecentNotifications
+      parameters:
+        - name: limit
+          in: query
+          description: 返回条数
+          required: false
+          schema:
+            type: integer
+            format: int32
+            minimum: 1
+            default: 3
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Notification'
+
+  /api/users:
+    get:
+      tags: [Users]
+      summary: 获取用户列表
+      operationId: listUsers
+      parameters:
+        - name: search
+          in: query
+          description: 按姓名 / 邮箱 / 电话模糊搜索
+          required: false
+          schema:
+            type: string
+        - name: department
+          in: query
+          description: 部门名称
+          required: false
+          schema:
+            type: string
+        - name: status
+          in: query
+          description: 用户状态
+          required: false
+          schema:
+            type: string
+            enum: [active, inactive]
+        - name: page
+          in: query
+          description: 页码，从 1 开始
+          required: false
+          schema:
+            type: integer
+            format: int32
+            minimum: 1
+            default: 1
+        - name: limit
+          in: query
+          description: 每页条数
+          required: false
+          schema:
+            type: integer
+            format: int32
+            minimum: 1
+            default: 20
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UsersPage'
+    post:
+      tags: [Users]
+      summary: 创建用户
+      operationId: createUser
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UserCreateRequest'
+      responses:
+        '201':
+          description: 创建成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserResponse'
+
+  /api/users/{id}:
+    put:
+      tags: [Users]
+      summary: 更新用户
+      operationId: updateUser
+      parameters:
+        - name: id
+          in: path
+          description: 用户 ID
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UserUpdateRequest'
+      responses:
+        '200':
+          description: 更新成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserResponse'
+    delete:
+      tags: [Users]
+      summary: 删除用户
+      operationId: deleteUser
+      parameters:
+        - name: id
+          in: path
+          description: 用户 ID
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: 删除成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiSuccess'
+
+  /api/departments:
+    get:
+      tags: [Departments]
+      summary: 获取部门树形结构
+      operationId: listDepartmentsTree
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Department'
+    post:
+      tags: [Departments]
+      summary: 创建部门
+      operationId: createDepartment
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DepartmentCreateRequest'
+      responses:
+        '201':
+          description: 创建成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DepartmentResponse'
+
+  /api/departments/{id}:
+    put:
+      tags: [Departments]
+      summary: 更新部门
+      operationId: updateDepartment
+      parameters:
+        - name: id
+          in: path
+          description: 部门 ID
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DepartmentUpdateRequest'
+      responses:
+        '200':
+          description: 更新成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DepartmentResponse'
+    delete:
+      tags: [Departments]
+      summary: 删除部门
+      operationId: deleteDepartment
+      parameters:
+        - name: id
+          in: path
+          description: 部门 ID
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: 删除成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiSuccess'
+
+  /api/departments/{id}/members:
+    get:
+      tags: [Departments, Users]
+      summary: 获取部门成员
+      operationId: getDepartmentMembers
+      parameters:
+        - name: id
+          in: path
+          description: 部门 ID
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/User'
+
+  /api/workflows:
+    get:
+      tags: [Workflows]
+      summary: 获取流程列表
+      operationId: listWorkflows
+      parameters:
+        - name: type
+          in: query
+          description: 流程类型
+          required: false
+          schema:
+            type: string
+            enum: [leave, expense, procurement, travel]
+        - name: status
+          in: query
+          description: 流程状态
+          required: false
+          schema:
+            type: string
+            enum: [pending, approved, rejected, processing]
+        - name: page
+          in: query
+          required: false
+          description: 页码
+          schema:
+            type: integer
+            format: int32
+            minimum: 1
+            default: 1
+        - name: limit
+          in: query
+          required: false
+          description: 每页条数
+          schema:
+            type: integer
+            format: int32
+            minimum: 1
+            default: 20
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WorkflowsPage'
+    post:
+      tags: [Workflows]
+      summary: 创建流程申请
+      operationId: createWorkflow
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/WorkflowCreateRequest'
+      responses:
+        '201':
+          description: 创建成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WorkflowResponse'
+
+  /api/workflows/my:
+    get:
+      tags: [Workflows]
+      summary: 获取我发起的流程
+      operationId: listMyWorkflows
+      parameters:
+        - name: type
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [leave, expense, procurement, travel]
+        - name: status
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [pending, approved, rejected, processing]
+        - name: page
+          in: query
+          required: false
+          schema:
+            type: integer
+            format: int32
+            minimum: 1
+            default: 1
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            format: int32
+            minimum: 1
+            default: 20
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WorkflowsPage'
+
+  /api/workflows/pending:
+    get:
+      tags: [Workflows]
+      summary: 获取待我审批的流程
+      operationId: listPendingWorkflows
+      parameters:
+        - name: type
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [leave, expense, procurement, travel]
+        - name: page
+          in: query
+          required: false
+          schema:
+            type: integer
+            format: int32
+            minimum: 1
+            default: 1
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            format: int32
+            minimum: 1
+            default: 20
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WorkflowsPage'
+
+  /api/workflows/{id}:
+    get:
+      tags: [Workflows]
+      summary: 获取流程详情（可选）
+      operationId: getWorkflowById
+      parameters:
+        - name: id
+          in: path
+          description: 流程 ID
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WorkflowResponse'
+
+  /api/workflows/{id}/approve:
+    put:
+      tags: [Workflows]
+      summary: 审批通过
+      operationId: approveWorkflow
+      parameters:
+        - name: id
+          in: path
+          description: 流程 ID
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/WorkflowApproveRequest'
+      responses:
+        '200':
+          description: 审批成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WorkflowResponse'
+
+  /api/workflows/{id}/reject:
+    put:
+      tags: [Workflows]
+      summary: 审批驳回
+      operationId: rejectWorkflow
+      parameters:
+        - name: id
+          in: path
+          description: 流程 ID
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/WorkflowRejectRequest'
+      responses:
+        '200':
+          description: 驳回成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WorkflowResponse'
+
+  /api/meeting-rooms:
+    get:
+      tags: [Meetings]
+      summary: 获取会议室列表
+      operationId: listMeetingRooms
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/MeetingRoom'
+
+  /api/meetings:
+    get:
+      tags: [Meetings]
+      summary: 获取会议预约列表
+      operationId: listMeetings
+      parameters:
+        - name: date
+          in: query
+          description: 日期，格式 YYYY-MM-DD
+          required: false
+          schema:
+            type: string
+            format: date
+        - name: roomId
+          in: query
+          description: 会议室 ID
+          required: false
+          schema:
+            type: string
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Meeting'
+    post:
+      tags: [Meetings]
+      summary: 创建会议预约
+      operationId: createMeeting
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MeetingCreateRequest'
+      responses:
+        '201':
+          description: 创建成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MeetingResponse'
+
+  /api/meetings/{id}:
+    delete:
+      tags: [Meetings]
+      summary: 取消会议预约
+      operationId: deleteMeeting
+      parameters:
+        - name: id
+          in: path
+          description: 会议预约 ID
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: 取消成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiSuccess'
+
+  /api/meetings/check-availability:
+    get:
+      tags: [Meetings]
+      summary: 检查会议室时间段是否可用
+      operationId: checkMeetingAvailability
+      parameters:
+        - name: roomId
+          in: query
+          description: 会议室 ID
+          required: true
+          schema:
+            type: string
+        - name: date
+          in: query
+          description: 日期，格式 YYYY-MM-DD
+          required: true
+          schema:
+            type: string
+            format: date
+        - name: startTime
+          in: query
+          description: 开始时间，HH:mm
+          required: true
+          schema:
+            type: string
+        - name: endTime
+          in: query
+          description: 结束时间，HH:mm
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AvailabilityResponse'
+
+  /api/notifications:
+    get:
+      tags: [Notifications]
+      summary: 获取通知列表
+      operationId: listNotifications
+      parameters:
+        - name: type
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [system, workflow, meeting, announcement]
+        - name: isRead
+          in: query
+          required: false
+          schema:
+            type: boolean
+        - name: page
+          in: query
+          required: false
+          schema:
+            type: integer
+            format: int32
+            minimum: 1
+            default: 1
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            format: int32
+            minimum: 1
+            default: 20
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NotificationsPage'
+
+  /api/notifications/{id}/read:
+    put:
+      tags: [Notifications]
+      summary: 标记单条通知为已读
+      operationId: markNotificationAsRead
+      parameters:
+        - name: id
+          in: path
+          description: 通知 ID
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NotificationResponse'
+
+  /api/notifications/read-all:
+    put:
+      tags: [Notifications]
+      summary: 全部标记为已读
+      operationId: markAllNotificationsAsRead
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiSuccess'
+
+  /api/notifications/{id}:
+    delete:
+      tags: [Notifications]
+      summary: 删除通知
+      operationId: deleteNotification
+      parameters:
+        - name: id
+          in: path
+          description: 通知 ID
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: 删除成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiSuccess'
+
+  /api/login:
+    post:
+      tags: [Auth]
+      summary: 用户登录（示例，可选实现）
+      operationId: login
+      security: []  # 登录接口本身不需要带 Token
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginRequest'
+      responses:
+        '200':
+          description: 登录成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LoginResponse'
+
+  /api/me:
+    get:
+      tags: [Auth]
+      summary: 获取当前登录用户信息（示例，可选实现）
+      operationId: getCurrentUser
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  schemas:
+    ApiSuccess:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: true
+        message:
+          type: string
+      required: [success]
+
+    DashboardStats:
+      type: object
+      properties:
+        pendingApprovals:
+          type: integer
+          format: int32
+        todayMeetings:
+          type: integer
+          format: int32
+        unreadNotifications:
+          type: integer
+          format: int32
+        totalEmployees:
+          type: integer
+          format: int32
+        monthlyWorkflows:
+          type: integer
+          format: int32
+        approvalRate:
+          type: integer
+          format: int32
+          description: 审批通过率，百分比
+      required:
+        - pendingApprovals
+        - todayMeetings
+        - unreadNotifications
+        - totalEmployees
+        - monthlyWorkflows
+        - approvalRate
+
+    User:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        email:
+          type: string
+          format: email
+        avatar:
+          type: string
+          description: 头像字符，如姓名首字母
+        department:
+          type: string
+        role:
+          type: string
+          enum: [admin, manager, employee]
+        phone:
+          type: string
+        status:
+          type: string
+          enum: [active, inactive]
+        createdAt:
+          type: string
+          format: date
+      required:
+        - id
+        - name
+        - email
+        - avatar
+        - department
+        - role
+        - phone
+        - status
+        - createdAt
+
+    UserCreateRequest:
+      type: object
+      properties:
+        name:
+          type: string
+        email:
+          type: string
+          format: email
+        department:
+          type: string
+        role:
+          type: string
+          enum: [admin, manager, employee]
+        phone:
+          type: string
+      required: [name, email, department, role, phone]
+
+    UserUpdateRequest:
+      type: object
+      description: 至少包含一个字段
+      properties:
+        name:
+          type: string
+        email:
+          type: string
+          format: email
+        department:
+          type: string
+        role:
+          type: string
+          enum: [admin, manager, employee]
+        phone:
+          type: string
+        status:
+          type: string
+          enum: [active, inactive]
+
+    UserResponse:
+      type: object
+      properties:
+        user:
+          $ref: '#/components/schemas/User'
+      required: [user]
+
+    UsersPage:
+      type: object
+      properties:
+        users:
+          type: array
+          items:
+            $ref: '#/components/schemas/User'
+        total:
+          type: integer
+          format: int32
+        page:
+          type: integer
+          format: int32
+        totalPages:
+          type: integer
+          format: int32
+      required:
+        - users
+        - total
+        - page
+        - totalPages
+
+    Department:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        parentId:
+          type: string
+          nullable: true
+        managerId:
+          type: string
+        memberCount:
+          type: integer
+          format: int32
+        children:
+          type: array
+          items:
+            $ref: '#/components/schemas/Department'
+      required:
+        - id
+        - name
+        - parentId
+        - managerId
+        - memberCount
+
+    DepartmentCreateRequest:
+      type: object
+      properties:
+        name:
+          type: string
+        parentId:
+          type: string
+          nullable: true
+        managerId:
+          type: string
+      required: [name, managerId]
+
+    DepartmentUpdateRequest:
+      type: object
+      properties:
+        name:
+          type: string
+        parentId:
+          type: string
+          nullable: true
+        managerId:
+          type: string
+
+    DepartmentResponse:
+      type: object
+      properties:
+        department:
+          $ref: '#/components/schemas/Department'
+      required: [department]
+
+    WorkflowApprover:
+      type: object
+      properties:
+        userId:
+          type: string
+        name:
+          type: string
+        status:
+          type: string
+          enum: [pending, approved, rejected]
+        comment:
+          type: string
+        approvedAt:
+          type: string
+          description: 审批时间，字符串格式
+      required:
+        - userId
+        - name
+        - status
+
+    Workflow:
+      type: object
+      properties:
+        id:
+          type: string
+        title:
+          type: string
+        type:
+          type: string
+          enum: [leave, expense, procurement, travel]
+        applicant:
+          type: string
+        applicantId:
+          type: string
+        department:
+          type: string
+        status:
+          type: string
+          enum: [pending, approved, rejected, processing]
+        createdAt:
+          type: string
+          format: date
+        description:
+          type: string
+        amount:
+          type: number
+          format: double
+        startDate:
+          type: string
+          format: date
+        endDate:
+          type: string
+          format: date
+        approvers:
+          type: array
+          items:
+            $ref: '#/components/schemas/WorkflowApprover'
+      required:
+        - id
+        - title
+        - type
+        - applicant
+        - applicantId
+        - department
+        - status
+        - createdAt
+        - description
+        - approvers
+
+    WorkflowCreateRequest:
+      type: object
+      properties:
+        type:
+          type: string
+          enum: [leave, expense, procurement, travel]
+        title:
+          type: string
+        description:
+          type: string
+        amount:
+          type: number
+          format: double
+        startDate:
+          type: string
+          format: date
+        endDate:
+          type: string
+          format: date
+      required:
+        - type
+        - title
+        - description
+
+    WorkflowApproveRequest:
+      type: object
+      properties:
+        comment:
+          type: string
+          description: 审批意见，可选
+
+    WorkflowRejectRequest:
+      type: object
+      properties:
+        comment:
+          type: string
+          description: 驳回原因
+      required: [comment]
+
+    WorkflowResponse:
+      type: object
+      properties:
+        workflow:
+          $ref: '#/components/schemas/Workflow'
+      required: [workflow]
+
+    WorkflowsPage:
+      type: object
+      properties:
+        workflows:
+          type: array
+          items:
+            $ref: '#/components/schemas/Workflow'
+        total:
+          type: integer
+          format: int32
+      required:
+        - workflows
+        - total
+
+    MeetingRoom:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        capacity:
+          type: integer
+          format: int32
+        equipment:
+          type: array
+          items:
+            type: string
+        location:
+          type: string
+      required:
+        - id
+        - name
+        - capacity
+        - equipment
+        - location
+
+    Meeting:
+      type: object
+      properties:
+        id:
+          type: string
+        title:
+          type: string
+        roomId:
+          type: string
+        roomName:
+          type: string
+        organizer:
+          type: string
+        organizerId:
+          type: string
+        attendees:
+          type: array
+          items:
+            type: string
+        date:
+          type: string
+          format: date
+        startTime:
+          type: string
+        endTime:
+          type: string
+        description:
+          type: string
+        status:
+          type: string
+          enum: [upcoming, ongoing, completed, cancelled]
+      required:
+        - id
+        - title
+        - roomId
+        - roomName
+        - organizer
+        - organizerId
+        - attendees
+        - date
+        - startTime
+        - endTime
+        - description
+        - status
+
+    MeetingCreateRequest:
+      type: object
+      properties:
+        title:
+          type: string
+        roomId:
+          type: string
+        date:
+          type: string
+          format: date
+        startTime:
+          type: string
+        endTime:
+          type: string
+        attendees:
+          type: array
+          items:
+            type: string
+        description:
+          type: string
+      required:
+        - title
+        - roomId
+        - date
+        - startTime
+        - endTime
+        - attendees
+        - description
+
+    MeetingResponse:
+      type: object
+      properties:
+        meeting:
+          $ref: '#/components/schemas/Meeting'
+      required: [meeting]
+
+    AvailabilityResponse:
+      type: object
+      properties:
+        available:
+          type: boolean
+      required: [available]
+
+    Notification:
+      type: object
+      properties:
+        id:
+          type: string
+        title:
+          type: string
+        content:
+          type: string
+        type:
+          type: string
+          enum: [system, workflow, meeting, announcement]
+        isRead:
+          type: boolean
+        createdAt:
+          type: string
+        link:
+          type: string
+      required:
+        - id
+        - title
+        - content
+        - type
+        - isRead
+        - createdAt
+
+    NotificationResponse:
+      type: object
+      properties:
+        notification:
+          $ref: '#/components/schemas/Notification'
+      required: [notification]
+
+    NotificationsPage:
+      type: object
+      properties:
+        notifications:
+          type: array
+          items:
+            $ref: '#/components/schemas/Notification'
+        total:
+          type: integer
+          format: int32
+        unreadCount:
+          type: integer
+          format: int32
+      required:
+        - notifications
+        - total
+        - unreadCount
+
+    LoginRequest:
+      type: object
+      properties:
+        username:
+          type: string
+        password:
+          type: string
+          format: password
+      required:
+        - username
+        - password
+
+    LoginResponse:
+      type: object
+      properties:
+        accessToken:
+          type: string
+        tokenType:
+          type: string
+          example: Bearer
+        expiresIn:
+          type: integer
+          format: int64
+          description: 过期时间（秒）
+        user:
+          $ref: '#/components/schemas/User'
+      required:
+        - accessToken
+        - tokenType
+        - expiresIn
+        - user
+
+

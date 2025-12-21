@@ -38,7 +38,19 @@ import {
 } from '@/components/ui/select';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { mockWorkflows, Workflow, currentUser } from '@/data/mockData';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useAuth } from '@/auth/AuthContext';
+import type { Workflow } from '@/data/mockData';
+import { 
+  apiGetPendingWorkflows, 
+  apiGetMyWorkflows, 
+  apiCreateWorkflow, 
+  apiApproveWorkflow, 
+  apiRejectWorkflow,
+  type WorkflowCreatePayload,
+  type WorkflowApprovePayload,
+  type WorkflowRejectPayload,
+} from '@/lib/api';
 import { toast } from 'sonner';
 
 /**
@@ -85,7 +97,8 @@ const statusConfig = {
 };
 
 export default function WorkflowApproval() {
-  const [workflows, setWorkflows] = useState<Workflow[]>(mockWorkflows);
+  const { user: currentUser } = useAuth();
+  const queryClient = useQueryClient();
   const [searchQuery, setSearchQuery] = useState('');
   const [typeFilter, setTypeFilter] = useState('all');
   const [activeTab, setActiveTab] = useState('pending');
@@ -103,95 +116,110 @@ export default function WorkflowApproval() {
     endDate: '',
   });
 
-  // Filter workflows based on tab
-  const getFilteredWorkflows = () => {
-    let filtered = workflows;
-    
-    // Tab filter
-    if (activeTab === 'pending') {
-      // 待我审批的流程
-      filtered = filtered.filter(w => 
-        (w.status === 'pending' || w.status === 'processing') &&
-        w.approvers.some(a => a.userId === currentUser.id && a.status === 'pending')
-      );
-    } else if (activeTab === 'my') {
-      // 我发起的流程
-      filtered = filtered.filter(w => w.applicantId === currentUser.id);
-    }
-    
-    // Search filter
-    if (searchQuery) {
-      filtered = filtered.filter(w => 
-        w.title.includes(searchQuery) || 
-        w.applicant.includes(searchQuery) ||
-        w.description.includes(searchQuery)
-      );
-    }
-    
-    // Type filter
-    if (typeFilter !== 'all') {
-      filtered = filtered.filter(w => w.type === typeFilter);
-    }
-    
-    return filtered;
-  };
+  // Fetch workflows based on tab
+  const { data: pendingWorkflowsPage } = useQuery({
+    queryKey: ['workflows', 'pending', { type: typeFilter !== 'all' ? typeFilter : undefined }],
+    queryFn: () => apiGetPendingWorkflows({ 
+      type: typeFilter !== 'all' ? (typeFilter as 'leave' | 'expense' | 'procurement' | 'travel') : undefined,
+      page: 1,
+      limit: 100,
+    }),
+    enabled: activeTab === 'pending',
+  });
 
-  const filteredWorkflows = getFilteredWorkflows();
+  const { data: myWorkflowsPage } = useQuery({
+    queryKey: ['workflows', 'my', { type: typeFilter !== 'all' ? typeFilter : undefined }],
+    queryFn: () => apiGetMyWorkflows({ 
+      type: typeFilter !== 'all' ? (typeFilter as 'leave' | 'expense' | 'procurement' | 'travel') : undefined,
+      page: 1,
+      limit: 100,
+    }),
+    enabled: activeTab === 'my',
+  });
+
+  const workflows = activeTab === 'pending' 
+    ? (pendingWorkflowsPage?.workflows ?? [])
+    : (myWorkflowsPage?.workflows ?? []);
+
+  // Filter workflows by search query
+  const filteredWorkflows = workflows.filter(w => {
+    if (!searchQuery) return true;
+    return w.title.includes(searchQuery) || 
+           w.applicant.includes(searchQuery) ||
+           w.description.includes(searchQuery);
+  });
+
+  const createWorkflowMutation = useMutation({
+    mutationFn: (payload: WorkflowCreatePayload) => apiCreateWorkflow(payload),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['workflows'] });
+      setIsCreateDialogOpen(false);
+      setCreateForm({
+        type: 'leave',
+        title: '',
+        description: '',
+        amount: '',
+        startDate: '',
+        endDate: '',
+      });
+      toast.success('申请提交成功');
+    },
+    onError: (error: unknown) => {
+      toast.error((error as Error).message || '提交失败');
+    },
+  });
+
+  const approveWorkflowMutation = useMutation({
+    mutationFn: ({ id, payload }: { id: string; payload: WorkflowApprovePayload }) =>
+      apiApproveWorkflow(id, payload),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['workflows'] });
+      setSelectedWorkflow(null);
+      setApprovalComment('');
+      toast.success('审批通过');
+    },
+    onError: (error: unknown) => {
+      toast.error((error as Error).message || '审批失败');
+    },
+  });
+
+  const rejectWorkflowMutation = useMutation({
+    mutationFn: ({ id, payload }: { id: string; payload: WorkflowRejectPayload }) =>
+      apiRejectWorkflow(id, payload),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['workflows'] });
+      setSelectedWorkflow(null);
+      setApprovalComment('');
+      toast.success('已驳回申请');
+    },
+    onError: (error: unknown) => {
+      toast.error((error as Error).message || '驳回失败');
+    },
+  });
 
   const handleCreate = () => {
-    // API: POST /api/workflows
-    const newWorkflow: Workflow = {
-      id: String(Date.now()),
-      title: createForm.title,
+    if (!createForm.title || !createForm.description) {
+      toast.error('请填写标题和说明');
+      return;
+    }
+
+    const payload: WorkflowCreatePayload = {
       type: createForm.type,
-      applicant: currentUser.name,
-      applicantId: currentUser.id,
-      department: currentUser.department,
-      status: 'pending',
-      createdAt: new Date().toISOString().split('T')[0],
+      title: createForm.title,
       description: createForm.description,
       amount: createForm.amount ? Number(createForm.amount) : undefined,
       startDate: createForm.startDate || undefined,
       endDate: createForm.endDate || undefined,
-      approvers: [
-        { userId: '2', name: '李娜', status: 'pending' },
-      ],
     };
-    
-    setWorkflows([newWorkflow, ...workflows]);
-    setIsCreateDialogOpen(false);
-    setCreateForm({
-      type: 'leave',
-      title: '',
-      description: '',
-      amount: '',
-      startDate: '',
-      endDate: '',
-    });
-    toast.success('申请提交成功');
+
+    createWorkflowMutation.mutate(payload);
   };
 
   const handleApprove = (workflow: Workflow) => {
-    // API: PUT /api/workflows/:id/approve
-    setWorkflows(workflows.map(w => {
-      if (w.id === workflow.id) {
-        const updatedApprovers = w.approvers.map(a => 
-          a.userId === currentUser.id 
-            ? { ...a, status: 'approved' as const, comment: approvalComment, approvedAt: new Date().toISOString() }
-            : a
-        );
-        const allApproved = updatedApprovers.every(a => a.status === 'approved');
-        return {
-          ...w,
-          approvers: updatedApprovers,
-          status: allApproved ? 'approved' as const : 'processing' as const,
-        };
-      }
-      return w;
-    }));
-    setSelectedWorkflow(null);
-    setApprovalComment('');
-    toast.success('审批通过');
+    const payload: WorkflowApprovePayload = {
+      comment: approvalComment || undefined,
+    };
+    approveWorkflowMutation.mutate({ id: workflow.id, payload });
   };
 
   const handleReject = (workflow: Workflow) => {
@@ -199,25 +227,10 @@ export default function WorkflowApproval() {
       toast.error('请填写驳回原因');
       return;
     }
-    // API: PUT /api/workflows/:id/reject
-    setWorkflows(workflows.map(w => {
-      if (w.id === workflow.id) {
-        const updatedApprovers = w.approvers.map(a => 
-          a.userId === currentUser.id 
-            ? { ...a, status: 'rejected' as const, comment: approvalComment, approvedAt: new Date().toISOString() }
-            : a
-        );
-        return {
-          ...w,
-          approvers: updatedApprovers,
-          status: 'rejected' as const,
-        };
-      }
-      return w;
-    }));
-    setSelectedWorkflow(null);
-    setApprovalComment('');
-    toast.success('已驳回申请');
+    const payload: WorkflowRejectPayload = {
+      comment: approvalComment,
+    };
+    rejectWorkflowMutation.mutate({ id: workflow.id, payload });
   };
 
   return (
@@ -320,8 +333,8 @@ export default function WorkflowApproval() {
               <Button variant="outline" onClick={() => setIsCreateDialogOpen(false)}>
                 取消
               </Button>
-              <Button onClick={handleCreate}>
-                提交申请
+              <Button onClick={handleCreate} disabled={createWorkflowMutation.isPending}>
+                {createWorkflowMutation.isPending ? '提交中...' : '提交申请'}
               </Button>
             </DialogFooter>
           </DialogContent>
@@ -334,10 +347,7 @@ export default function WorkflowApproval() {
           <TabsTrigger value="pending" className="gap-2">
             待我审批
             <Badge variant="secondary" className="ml-1">
-              {workflows.filter(w => 
-                (w.status === 'pending' || w.status === 'processing') &&
-                w.approvers.some(a => a.userId === currentUser.id && a.status === 'pending')
-              ).length}
+              {pendingWorkflowsPage?.total ?? 0}
             </Badge>
           </TabsTrigger>
           <TabsTrigger value="my">我的申请</TabsTrigger>
@@ -388,7 +398,7 @@ export default function WorkflowApproval() {
               const TypeIcon = workflowTypeConfig[workflow.type].icon;
               const StatusIcon = statusConfig[workflow.status].icon;
               const canApprove = activeTab === 'pending' && 
-                workflow.approvers.some(a => a.userId === currentUser.id && a.status === 'pending');
+                (workflow.status === 'pending' || workflow.status === 'processing');
               
               return (
                 <Card key={workflow.id} className="overflow-hidden">
@@ -571,7 +581,7 @@ export default function WorkflowApproval() {
               </div>
 
               {/* Approval actions */}
-              {selectedWorkflow.approvers.some(a => a.userId === currentUser.id && a.status === 'pending') && (
+              {activeTab === 'pending' && (selectedWorkflow.status === 'pending' || selectedWorkflow.status === 'processing') && (
                 <div className="space-y-3 pt-4 border-t border-border">
                   <div>
                     <Label htmlFor="comment">审批意见</Label>
@@ -587,13 +597,17 @@ export default function WorkflowApproval() {
                     <Button 
                       variant="outline"
                       onClick={() => handleReject(selectedWorkflow)}
+                      disabled={rejectWorkflowMutation.isPending}
                     >
                       <XIcon className="h-4 w-4 mr-1" />
-                      驳回
+                      {rejectWorkflowMutation.isPending ? '驳回中...' : '驳回'}
                     </Button>
-                    <Button onClick={() => handleApprove(selectedWorkflow)}>
+                    <Button 
+                      onClick={() => handleApprove(selectedWorkflow)}
+                      disabled={approveWorkflowMutation.isPending}
+                    >
                       <Check className="h-4 w-4 mr-1" />
-                      通过
+                      {approveWorkflowMutation.isPending ? '审批中...' : '通过'}
                     </Button>
                   </div>
                 </div>

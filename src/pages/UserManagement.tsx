@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { 
   Plus, 
   Search, 
@@ -46,7 +46,16 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Label } from '@/components/ui/label';
-import { mockUsers, User } from '@/data/mockData';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import type { User } from '@/data/mockData';
+import { 
+  apiGetUsers, 
+  apiCreateUser, 
+  apiUpdateUser, 
+  apiDeleteUser,
+  type UserCreatePayload,
+  type UserUpdatePayload,
+} from '@/lib/api';
 import { toast } from 'sonner';
 
 /**
@@ -76,11 +85,12 @@ const roleMap: Record<string, string> = {
 const departments = ['全部', '技术部', '人事部', '市场部', '财务部'];
 
 export default function UserManagement() {
-  const [users, setUsers] = useState<User[]>(mockUsers);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedDepartment, setSelectedDepartment] = useState('全部');
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [editingUser, setEditingUser] = useState<User | null>(null);
+  const [page, setPage] = useState(1);
+  const queryClient = useQueryClient();
   
   // Form state
   const [formData, setFormData] = useState({
@@ -91,56 +101,83 @@ export default function UserManagement() {
     role: 'employee' as 'admin' | 'manager' | 'employee',
   });
 
-  const filteredUsers = users.filter(user => {
-    const matchesSearch = user.name.includes(searchQuery) || 
-                         user.email.includes(searchQuery) ||
-                         user.phone.includes(searchQuery);
-    const matchesDepartment = selectedDepartment === '全部' || user.department === selectedDepartment;
-    return matchesSearch && matchesDepartment;
+  const { data: usersPage, isLoading } = useQuery({
+    queryKey: ['users', { search: searchQuery, department: selectedDepartment, page }],
+    queryFn: () => apiGetUsers({
+      search: searchQuery || undefined,
+      department: selectedDepartment !== '全部' ? selectedDepartment : undefined,
+      page,
+      limit: 50,
+    }),
+  });
+
+  const users = usersPage?.users ?? [];
+  const total = usersPage?.total ?? 0;
+
+  const createUserMutation = useMutation({
+    mutationFn: (payload: UserCreatePayload) => apiCreateUser(payload),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['users'] });
+      setIsAddDialogOpen(false);
+      resetForm();
+      toast.success('用户创建成功');
+    },
+    onError: (error: unknown) => {
+      toast.error((error as Error).message || '创建用户失败');
+    },
+  });
+
+  const updateUserMutation = useMutation({
+    mutationFn: ({ id, payload }: { id: string; payload: UserUpdatePayload }) =>
+      apiUpdateUser(id, payload),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['users'] });
+      setEditingUser(null);
+      resetForm();
+      toast.success('用户更新成功');
+    },
+    onError: (error: unknown) => {
+      toast.error((error as Error).message || '更新用户失败');
+    },
+  });
+
+  const deleteUserMutation = useMutation({
+    mutationFn: (id: string) => apiDeleteUser(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['users'] });
+      toast.success('用户已删除');
+    },
+    onError: (error: unknown) => {
+      toast.error((error as Error).message || '删除用户失败');
+    },
   });
 
   const handleAddUser = () => {
-    // API: POST /api/users
-    const newUser: User = {
-      id: String(Date.now()),
-      ...formData,
-      avatar: formData.name.substring(0, 2).toUpperCase(),
-      status: 'active',
-      createdAt: new Date().toISOString().split('T')[0],
-    };
-    setUsers([...users, newUser]);
-    setIsAddDialogOpen(false);
-    resetForm();
-    toast.success('用户创建成功');
+    if (!formData.name || !formData.email) {
+      toast.error('请填写姓名和邮箱');
+      return;
+    }
+    createUserMutation.mutate(formData);
   };
 
   const handleUpdateUser = () => {
     if (!editingUser) return;
-    // API: PUT /api/users/:id
-    setUsers(users.map(u => 
-      u.id === editingUser.id 
-        ? { ...u, ...formData, avatar: formData.name.substring(0, 2).toUpperCase() }
-        : u
-    ));
-    setEditingUser(null);
-    resetForm();
-    toast.success('用户更新成功');
+    updateUserMutation.mutate({ id: editingUser.id, payload: formData });
   };
 
   const handleDeleteUser = (userId: string) => {
-    // API: DELETE /api/users/:id
-    setUsers(users.filter(u => u.id !== userId));
-    toast.success('用户已删除');
+    if (confirm('确定要删除该用户吗？')) {
+      deleteUserMutation.mutate(userId);
+    }
   };
 
   const handleToggleStatus = (userId: string) => {
-    // API: PUT /api/users/:id
-    setUsers(users.map(u => 
-      u.id === userId 
-        ? { ...u, status: u.status === 'active' ? 'inactive' : 'active' }
-        : u
-    ));
-    toast.success('状态已更新');
+    const user = users.find(u => u.id === userId);
+    if (!user) return;
+    updateUserMutation.mutate({
+      id: userId,
+      payload: { status: user.status === 'active' ? 'inactive' : 'active' },
+    });
   };
 
   const resetForm = () => {
@@ -171,7 +208,7 @@ export default function UserManagement() {
         <div>
           <h2 className="text-xl font-semibold text-foreground">用户列表</h2>
           <p className="text-sm text-muted-foreground mt-1">
-            共 {filteredUsers.length} 名用户
+            共 {total} 名用户
           </p>
         </div>
         <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
@@ -254,8 +291,8 @@ export default function UserManagement() {
               <Button variant="outline" onClick={() => setIsAddDialogOpen(false)}>
                 取消
               </Button>
-              <Button onClick={handleAddUser}>
-                创建
+              <Button onClick={handleAddUser} disabled={createUserMutation.isPending}>
+                {createUserMutation.isPending ? '创建中...' : '创建'}
               </Button>
             </DialogFooter>
           </DialogContent>
@@ -306,7 +343,20 @@ export default function UserManagement() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {filteredUsers.map((user) => (
+              {isLoading ? (
+                <TableRow>
+                  <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
+                    加载中...
+                  </TableCell>
+                </TableRow>
+              ) : users.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
+                    暂无用户数据
+                  </TableCell>
+                </TableRow>
+              ) : (
+                users.map((user) => (
                 <TableRow key={user.id}>
                   <TableCell>
                     <div className="flex items-center gap-3">
@@ -369,7 +419,8 @@ export default function UserManagement() {
                     </DropdownMenu>
                   </TableCell>
                 </TableRow>
-              ))}
+                ))
+              )}
             </TableBody>
           </Table>
         </CardContent>
@@ -447,8 +498,8 @@ export default function UserManagement() {
             <Button variant="outline" onClick={() => setEditingUser(null)}>
               取消
             </Button>
-            <Button onClick={handleUpdateUser}>
-              保存
+            <Button onClick={handleUpdateUser} disabled={updateUserMutation.isPending}>
+              {updateUserMutation.isPending ? '保存中...' : '保存'}
             </Button>
           </DialogFooter>
         </DialogContent>
