@@ -16,8 +16,8 @@ import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import type { Department, User } from "@/data/mockData";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { 
-  apiGetDepartments, 
+import {
+  apiGetDepartments,
   apiGetDepartmentMembers,
   apiCreateDepartment,
   apiDeleteDepartment,
@@ -58,18 +58,18 @@ import { toast } from "sonner";
  * API 接口:
  * GET /api/departments - 获取部门树形结构
  * 返回数据: Department[] (树形结构)
- * 
+ *
  * POST /api/departments - 创建部门
  * 请求体: { name: string, parentId?: string, managerId: string }
  * 返回数据: { department: Department }
- * 
+ *
  * PUT /api/departments/:id - 更新部门
  * 请求体: { name?: string, parentId?: string, managerId?: string }
  * 返回数据: { department: Department }
- * 
+ *
  * DELETE /api/departments/:id - 删除部门
  * 返回数据: { success: boolean }
- * 
+ *
  * GET /api/departments/:id/members - 获取部门成员
  * 返回数据: User[]
  */
@@ -83,13 +83,13 @@ interface DepartmentNodeProps {
   selectedId: string | null;
 }
 
-function DepartmentNode({ 
-  department, 
-  level, 
-  expandedIds, 
-  onToggle, 
+function DepartmentNode({
+  department,
+  level,
+  expandedIds,
+  onToggle,
   onSelect,
-  selectedId 
+  selectedId,
 }: DepartmentNodeProps) {
   const hasChildren = department.children && department.children.length > 0;
   const isExpanded = expandedIds.has(department.id);
@@ -122,11 +122,16 @@ function DepartmentNode({
         ) : (
           <span className="w-5" />
         )}
-        
-        <Building2 className={cn("h-4 w-4", isSelected ? "text-primary" : "text-muted-foreground")} />
-        
+
+        <Building2
+          className={cn(
+            "h-4 w-4",
+            isSelected ? "text-primary" : "text-muted-foreground"
+          )}
+        />
+
         <span className="font-medium flex-1">{department.name}</span>
-        
+
         <Badge variant="outline" className="text-xs">
           {department.memberCount} 人
         </Badge>
@@ -153,7 +158,8 @@ function DepartmentNode({
 
 export default function OrganizationStructure() {
   const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
-  const [selectedDepartment, setSelectedDepartment] = useState<Department | null>(null);
+  const [selectedDepartment, setSelectedDepartment] =
+    useState<Department | null>(null);
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [isAddMemberDialogOpen, setIsAddMemberDialogOpen] = useState(false);
   const [formData, setFormData] = useState<{
@@ -164,17 +170,23 @@ export default function OrganizationStructure() {
     managerId: "",
   });
   const [memberFormData, setMemberFormData] = useState<{
-    name: string;
+    firstName: string;
+    lastName: string;
     email: string;
     role: string;
   }>({
-    name: "",
+    firstName: "",
+    lastName: "",
     email: "",
     role: "",
   });
   const queryClient = useQueryClient();
 
-  const { data: departments, isLoading, refetch: refetchDepartments } = useQuery<Department[]>({
+  const {
+    data: departments,
+    isLoading,
+    refetch: refetchDepartments,
+  } = useQuery<Department[]>({
     queryKey: ["departments"],
     queryFn: apiGetDepartments,
   });
@@ -194,7 +206,7 @@ export default function OrganizationStructure() {
   // 初始化成员表单的默认角色
   useEffect(() => {
     if (roles.length > 0) {
-      setMemberFormData(prev => {
+      setMemberFormData((prev) => {
         if (!prev.role) {
           return { ...prev, role: roles[0].id };
         }
@@ -215,7 +227,8 @@ export default function OrganizationStructure() {
 
   // 创建部门的mutation
   const createDepartmentMutation = useMutation({
-    mutationFn: (payload: DepartmentCreatePayload) => apiCreateDepartment(payload),
+    mutationFn: (payload: DepartmentCreatePayload) =>
+      apiCreateDepartment(payload),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["departments"] });
       setIsAddDialogOpen(false);
@@ -277,7 +290,11 @@ export default function OrganizationStructure() {
       toast.warning("请先选择一个部门");
       return;
     }
-    if (confirm(`确定要删除部门 "${selectedDepartment.name}" 吗？此操作不可恢复。`)) {
+    if (
+      confirm(
+        `确定要删除部门 "${selectedDepartment.name}" 吗？此操作不可恢复。`
+      )
+    ) {
       deleteDepartmentMutation.mutate(selectedDepartment.id);
     }
   };
@@ -299,7 +316,22 @@ export default function OrganizationStructure() {
 
   // 删除成员的mutation（通过更新用户部门为空来移除）
   const removeMemberMutation = useMutation({
-    mutationFn: (userId: string) => apiUpdateUser(userId, { department: "" }),
+    mutationFn: ({
+      userId,
+      oldDept,
+      oldRole,
+    }: {
+      userId: string;
+      oldDept: string;
+      oldRole: string;
+    }) =>
+      apiUpdateUser({
+        id: userId,
+        oldDept,
+        oldRole,
+        newDept: "",
+        newRole: oldRole,
+      }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["department-members"] });
       queryClient.invalidateQueries({ queryKey: ["departments"] });
@@ -317,7 +349,7 @@ export default function OrganizationStructure() {
     }
     // 设置默认角色
     if (roles.length > 0) {
-      setMemberFormData(prev => ({ ...prev, role: roles[0].id }));
+      setMemberFormData((prev) => ({ ...prev, role: roles[0].id }));
     }
     setIsAddMemberDialogOpen(true);
   };
@@ -327,8 +359,8 @@ export default function OrganizationStructure() {
       toast.warning("请先选择一个部门");
       return;
     }
-    if (!memberFormData.name.trim()) {
-      toast.error("请输入成员姓名");
+    if (!memberFormData.firstName.trim() || !memberFormData.lastName.trim()) {
+      toast.error("请输入成员姓名（名和姓）");
       return;
     }
     if (!memberFormData.email.trim()) {
@@ -340,28 +372,41 @@ export default function OrganizationStructure() {
       return;
     }
     createMemberMutation.mutate({
-      name: memberFormData.name.trim(),
+      firstName: memberFormData.firstName.trim(),
+      lastName: memberFormData.lastName.trim(),
       email: memberFormData.email.trim(),
       department: selectedDepartment.name,
-      role: memberFormData.role as "admin" | "manager" | "employee",
+      role: memberFormData.role,
     });
   };
 
-  const handleRemoveMember = (memberId: string, memberName: string) => {
+  const handleRemoveMember = (
+    memberId: string,
+    memberName: string,
+    memberDept: string,
+    memberRole: string
+  ) => {
     if (confirm(`确定要将 ${memberName} 从该部门移除吗？`)) {
-      removeMemberMutation.mutate(memberId);
+      removeMemberMutation.mutate({
+        userId: memberId,
+        oldDept: memberDept,
+        oldRole: memberRole,
+      });
     }
   };
 
   const resetMemberForm = () => {
     setMemberFormData({
-      name: "",
+      firstName: "",
+      lastName: "",
       email: "",
       role: roles.length > 0 ? roles[0].id : "",
     });
   };
 
-  const { data: selectedMembers = [], refetch: refetchMembers } = useQuery<User[]>({
+  const { data: selectedMembers = [], refetch: refetchMembers } = useQuery<
+    User[]
+  >({
     queryKey: ["department-members", selectedDepartment?.id],
     queryFn: () =>
       selectedDepartment
@@ -375,7 +420,7 @@ export default function OrganizationStructure() {
     if (selectedDepartment) {
       await refetchMembers();
     }
-    toast.success('数据已刷新');
+    toast.success("数据已刷新");
   };
 
   const manager = selectedMembers.length > 0 ? selectedMembers[0] : null;
@@ -387,11 +432,24 @@ export default function OrganizationStructure() {
         <CardHeader className="flex flex-row items-center justify-between">
           <CardTitle className="text-base">组织架构</CardTitle>
           <div className="flex gap-2">
-            <Button size="sm" variant="outline" className="gap-1" onClick={handleRefresh} disabled={isLoading}>
-              <RefreshCw className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
+            <Button
+              size="sm"
+              variant="outline"
+              className="gap-1"
+              onClick={handleRefresh}
+              disabled={isLoading}
+            >
+              <RefreshCw
+                className={`h-4 w-4 ${isLoading ? "animate-spin" : ""}`}
+              />
               刷新
             </Button>
-            <Button size="sm" variant="outline" className="gap-1" onClick={handleAddDepartment}>
+            <Button
+              size="sm"
+              variant="outline"
+              className="gap-1"
+              onClick={handleAddDepartment}
+            >
               <Plus className="h-4 w-4" />
               添加部门
             </Button>
@@ -425,7 +483,7 @@ export default function OrganizationStructure() {
         <CardHeader className="flex flex-row items-center justify-between">
           <div>
             <CardTitle className="text-base">
-              {selectedDepartment?.name || '请选择部门'}
+              {selectedDepartment?.name || "请选择部门"}
             </CardTitle>
             {selectedDepartment && (
               <p className="text-sm text-muted-foreground mt-1">
@@ -449,13 +507,15 @@ export default function OrganizationStructure() {
                   <Users className="mr-2 h-4 w-4" />
                   添加成员
                 </DropdownMenuItem>
-                <DropdownMenuItem 
+                <DropdownMenuItem
                   className="text-destructive"
                   onClick={handleDeleteDepartment}
                   disabled={deleteDepartmentMutation.isPending}
                 >
                   <Trash2 className="mr-2 h-4 w-4" />
-                  {deleteDepartmentMutation.isPending ? "删除中..." : "删除部门"}
+                  {deleteDepartmentMutation.isPending
+                    ? "删除中..."
+                    : "删除部门"}
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
@@ -467,44 +527,61 @@ export default function OrganizationStructure() {
               {/* Manager info */}
               {manager && (
                 <div className="rounded-lg border border-border p-4">
-                  <h4 className="text-sm font-medium text-muted-foreground mb-3">部门负责人</h4>
+                  <h4 className="text-sm font-medium text-muted-foreground mb-3">
+                    部门负责人
+                  </h4>
                   <div className="flex items-center gap-4">
                     <div className="flex h-12 w-12 items-center justify-center rounded-full bg-primary/10 text-primary font-medium">
                       {manager.avatar}
                     </div>
                     <div>
-                      <p className="font-medium text-foreground">{manager.name}</p>
-                      <p className="text-sm text-muted-foreground">{manager.email}</p>
+                      <p className="font-medium text-foreground">
+                        {manager.name}
+                      </p>
+                      <p className="text-sm text-muted-foreground">
+                        {manager.email}
+                      </p>
                     </div>
                     <Badge variant="secondary" className="ml-auto">
-                      {manager.role === 'admin' ? '管理员' : manager.role === 'manager' ? '经理' : '员工'}
+                      {manager.role === "admin"
+                        ? "管理员"
+                        : manager.role === "manager"
+                        ? "经理"
+                        : "员工"}
                     </Badge>
                   </div>
                 </div>
               )}
 
               {/* Sub-departments */}
-              {selectedDepartment.children && selectedDepartment.children.length > 0 && (
-                <div>
-                  <h4 className="text-sm font-medium text-muted-foreground mb-3">下级部门</h4>
-                  <div className="grid gap-3 sm:grid-cols-2">
-                    {selectedDepartment.children.map((child) => (
-                      <div
-                        key={child.id}
-                        className="flex items-center gap-3 rounded-lg border border-border p-3 cursor-pointer hover:bg-muted/50 transition-colors"
-                        onClick={() => setSelectedDepartment(child)}
-                      >
-                        <Building2 className="h-5 w-5 text-muted-foreground" />
-                        <div className="flex-1">
-                          <p className="font-medium text-foreground">{child.name}</p>
-                          <p className="text-sm text-muted-foreground">{child.memberCount} 人</p>
+              {selectedDepartment.children &&
+                selectedDepartment.children.length > 0 && (
+                  <div>
+                    <h4 className="text-sm font-medium text-muted-foreground mb-3">
+                      下级部门
+                    </h4>
+                    <div className="grid gap-3 sm:grid-cols-2">
+                      {selectedDepartment.children.map((child) => (
+                        <div
+                          key={child.id}
+                          className="flex items-center gap-3 rounded-lg border border-border p-3 cursor-pointer hover:bg-muted/50 transition-colors"
+                          onClick={() => setSelectedDepartment(child)}
+                        >
+                          <Building2 className="h-5 w-5 text-muted-foreground" />
+                          <div className="flex-1">
+                            <p className="font-medium text-foreground">
+                              {child.name}
+                            </p>
+                            <p className="text-sm text-muted-foreground">
+                              {child.memberCount} 人
+                            </p>
+                          </div>
+                          <ChevronRight className="h-4 w-4 text-muted-foreground" />
                         </div>
-                        <ChevronRight className="h-4 w-4 text-muted-foreground" />
-                      </div>
-                    ))}
+                      ))}
+                    </div>
                   </div>
-                </div>
-              )}
+                )}
 
               {/* Department members */}
               <div>
@@ -527,21 +604,36 @@ export default function OrganizationStructure() {
                           {member.avatar}
                         </div>
                         <div className="flex-1 min-w-0">
-                          <p className="font-medium text-foreground truncate">{member.name}</p>
-                          <p className="text-sm text-muted-foreground truncate">{member.email}</p>
+                          <p className="font-medium text-foreground truncate">
+                            {member.name}
+                          </p>
+                          {member.email && (
+                            <p className="text-sm text-muted-foreground truncate">
+                              {member.email}
+                            </p>
+                          )}
                         </div>
                         <div className="flex items-center gap-2">
-                          <Badge 
-                            variant={member.status === 'active' ? 'default' : 'outline'}
+                          <Badge
+                            variant={
+                              member.status === "active" ? "default" : "outline"
+                            }
                             className="flex-shrink-0"
                           >
-                            {member.status === 'active' ? '在职' : '离职'}
+                            {member.status === "active" ? "在职" : "离职"}
                           </Badge>
                           <Button
                             variant="ghost"
                             size="icon"
                             className="h-8 w-8 opacity-0 group-hover:opacity-100 transition-opacity"
-                            onClick={() => handleRemoveMember(member.id, member.name)}
+                            onClick={() =>
+                              handleRemoveMember(
+                                member.id,
+                                member.name,
+                                member.department,
+                                member.role
+                              )
+                            }
                             disabled={removeMemberMutation.isPending}
                           >
                             <Trash2 className="h-4 w-4 text-destructive" />
@@ -563,8 +655,8 @@ export default function OrganizationStructure() {
       </Card>
 
       {/* 添加部门对话框 */}
-      <Dialog 
-        open={isAddDialogOpen} 
+      <Dialog
+        open={isAddDialogOpen}
         onOpenChange={(open) => {
           setIsAddDialogOpen(open);
           if (!open) {
@@ -575,9 +667,7 @@ export default function OrganizationStructure() {
         <DialogContent>
           <DialogHeader>
             <DialogTitle>添加新部门</DialogTitle>
-            <DialogDescription>
-              填写以下信息创建新部门
-            </DialogDescription>
+            <DialogDescription>填写以下信息创建新部门</DialogDescription>
           </DialogHeader>
           <div className="grid gap-4 py-4">
             <div className="grid gap-2">
@@ -585,7 +675,9 @@ export default function OrganizationStructure() {
               <Input
                 id="dept-name"
                 value={formData.name}
-                onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                onChange={(e) =>
+                  setFormData({ ...formData, name: e.target.value })
+                }
                 placeholder="请输入部门名称"
               />
             </div>
@@ -593,7 +685,9 @@ export default function OrganizationStructure() {
               <Label htmlFor="dept-manager">部门负责人 *</Label>
               <Select
                 value={formData.managerId}
-                onValueChange={(value) => setFormData({ ...formData, managerId: value })}
+                onValueChange={(value) =>
+                  setFormData({ ...formData, managerId: value })
+                }
               >
                 <SelectTrigger id="dept-manager">
                   <SelectValue placeholder="选择部门负责人" />
@@ -631,8 +725,8 @@ export default function OrganizationStructure() {
       </Dialog>
 
       {/* 添加成员对话框 */}
-      <Dialog 
-        open={isAddMemberDialogOpen} 
+      <Dialog
+        open={isAddMemberDialogOpen}
         onOpenChange={(open) => {
           setIsAddMemberDialogOpen(open);
           if (!open) {
@@ -649,12 +743,31 @@ export default function OrganizationStructure() {
           </DialogHeader>
           <div className="grid gap-4 py-4">
             <div className="grid gap-2">
-              <Label htmlFor="member-name">姓名 *</Label>
+              <Label htmlFor="member-firstName">名 *</Label>
               <Input
-                id="member-name"
-                value={memberFormData.name}
-                onChange={(e) => setMemberFormData({ ...memberFormData, name: e.target.value })}
-                placeholder="请输入成员姓名"
+                id="member-firstName"
+                value={memberFormData.firstName}
+                onChange={(e) =>
+                  setMemberFormData({
+                    ...memberFormData,
+                    firstName: e.target.value,
+                  })
+                }
+                placeholder="请输入名"
+              />
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="member-lastName">姓 *</Label>
+              <Input
+                id="member-lastName"
+                value={memberFormData.lastName}
+                onChange={(e) =>
+                  setMemberFormData({
+                    ...memberFormData,
+                    lastName: e.target.value,
+                  })
+                }
+                placeholder="请输入姓"
               />
             </div>
             <div className="grid gap-2">
@@ -663,7 +776,12 @@ export default function OrganizationStructure() {
                 id="member-email"
                 type="email"
                 value={memberFormData.email}
-                onChange={(e) => setMemberFormData({ ...memberFormData, email: e.target.value })}
+                onChange={(e) =>
+                  setMemberFormData({
+                    ...memberFormData,
+                    email: e.target.value,
+                  })
+                }
                 placeholder="请输入成员邮箱"
               />
             </div>
@@ -671,7 +789,9 @@ export default function OrganizationStructure() {
               <Label htmlFor="member-role">角色 *</Label>
               <Select
                 value={memberFormData.role}
-                onValueChange={(value) => setMemberFormData({ ...memberFormData, role: value })}
+                onValueChange={(value) =>
+                  setMemberFormData({ ...memberFormData, role: value })
+                }
               >
                 <SelectTrigger id="member-role">
                   <SelectValue placeholder="选择角色" />

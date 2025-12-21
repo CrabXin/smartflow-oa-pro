@@ -435,12 +435,18 @@ interface BackendGroup {
   type?: string;
 }
 
+// DepartmentDTO 从 /api/dept/list 返回
+interface BackendDepartmentDTO {
+  id: string;
+  name: string;
+}
+
 export async function apiGetDepartments(): Promise<UiDepartment[]> {
-  const groups = await requestResult<BackendGroup[]>("/api/departments");
-  // SmartFlow 的 Group 不包含层级关系，这里简单映射为扁平结构
-  return groups.map<UiDepartment>((g) => ({
-    id: g.id,
-    name: g.name,
+  const departments = await requestResult<BackendDepartmentDTO[]>("/api/dept/list");
+  // 新接口返回扁平列表，这里简单映射为扁平结构
+  return departments.map<UiDepartment>((d) => ({
+    id: d.id,
+    name: d.name,
     parentId: null,
     managerId: "",
     memberCount: 0,
@@ -450,6 +456,12 @@ export async function apiGetDepartments(): Promise<UiDepartment[]> {
 
 // ===================== 角色管理 =====================
 
+// RoleDTO 从 /api/role/list 返回
+interface BackendRoleDTO {
+  id: string;
+  name: string;
+}
+
 export interface Role {
   id: string;
   name: string;
@@ -457,17 +469,20 @@ export interface Role {
 }
 
 export async function apiGetRoles(): Promise<Role[]> {
-  const roles = await requestResult<Role[]>("/api/roles");
-  return roles;
+  const roles = await requestResult<BackendRoleDTO[]>("/api/role/list");
+  return roles.map((r) => ({
+    id: r.id,
+    name: r.name,
+  }));
 }
 
 export async function apiGetDepartmentMembers(
   id: string,
 ): Promise<UiUser[]> {
-  const users = await requestResult<BackendUser[]>(
-    `/api/departments/${id}/members`,
+  const users = await requestResult<BackendUserInfoDTO[]>(
+    `/api/dept/${id}/members`,
   );
-  return users.map(mapBackendUser);
+  return users.map(mapBackendUserInfoDTO);
 }
 
 export interface DepartmentCreatePayload {
@@ -481,7 +496,7 @@ export type DepartmentUpdatePayload = Partial<DepartmentCreatePayload>;
 export async function apiCreateDepartment(
   payload: DepartmentCreatePayload,
 ): Promise<UiDepartment> {
-  const created = await requestResult<BackendGroup>("/api/departments", {
+  const created = await requestResult<BackendGroup>("/api/dept/add", {
     method: "POST",
     body: JSON.stringify(payload),
   });
@@ -499,7 +514,7 @@ export async function apiUpdateDepartment(
   id: string,
   payload: DepartmentUpdatePayload,
 ): Promise<UiDepartment> {
-  const updated = await requestResult<BackendGroup>(`/api/departments/${id}`, {
+  const updated = await requestResult<BackendGroup>(`/api/dept/${id}`, {
     method: "PUT",
     body: JSON.stringify(payload),
   });
@@ -514,7 +529,7 @@ export async function apiUpdateDepartment(
 }
 
 export async function apiDeleteDepartment(id: string): Promise<void> {
-  await requestResult<string>(`/api/departments/${id}`, {
+  await requestResult<string>(`/api/dept/${id}`, {
     method: "DELETE",
   });
 }

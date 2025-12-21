@@ -1,0 +1,532 @@
+openapi: 3.0.1
+info:
+  title: SmartFlow OA API
+  description: |
+    SmartFlow OA 系统后端接口定义。
+    本文档基于当前前端项目的页面逻辑与 mock 数据整理而来，可用于 Swagger UI 展示与 Spring Boot 代码生成。
+  version: 1.0.0
+tags: []
+paths:
+  /api/departments:
+    post:
+      summary: 创建部门
+      deprecated: false
+      description: ''
+      tags: []
+      parameters: []
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DepartmentCreateRequest'
+              description: ''
+      responses:
+        '200':
+          description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResultGroup'
+              examples:
+                '1':
+                  summary: 成功示例
+                  value:
+                    code: 0
+                    msg: ''
+                    data:
+                      id: ''
+                      name: ''
+                      type: ''
+                '2':
+                  summary: 成功示例
+                  value:
+                    code: 0
+                    msg: ''
+                    data:
+                      id: ''
+                      name: ''
+                      type: ''
+      security:
+        - BearerAuth: []
+  /api/departments/{id}:
+    put:
+      summary: 更新部门
+      deprecated: false
+      description: ''
+      tags: []
+      parameters:
+        - name: id
+          in: path
+          description: 部门 ID
+          required: true
+          example: ''
+          schema:
+            type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DepartmentUpdateRequest'
+              description: ''
+      responses:
+        '200':
+          description: 更新成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResultGroup'
+              examples:
+                '1':
+                  summary: 成功示例
+                  value:
+                    code: 0
+                    msg: ''
+                    data:
+                      id: ''
+                      name: ''
+                      type: ''
+                '2':
+                  summary: 成功示例
+                  value:
+                    code: 0
+                    msg: ''
+                    data:
+                      id: ''
+                      name: ''
+                      type: ''
+      security:
+        - BearerAuth: []
+    delete:
+      summary: 删除部门
+      deprecated: false
+      description: ''
+      tags: []
+      parameters:
+        - name: id
+          in: path
+          description: 部门 ID
+          required: true
+          example: ''
+          schema:
+            type: string
+      responses:
+        '200':
+          description: 删除成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResultString'
+              examples:
+                '1':
+                  summary: 成功示例
+                  value:
+                    code: 0
+                    msg: ''
+                    data: ''
+                '2':
+                  summary: 成功示例
+                  value:
+                    code: 0
+                    msg: ''
+                    data: ''
+      security:
+        - BearerAuth: []
+  /api/departments/{id}/members:
+    get:
+      summary: 获取部门成员
+      deprecated: false
+      description: ''
+      tags: []
+      parameters:
+        - name: id
+          in: path
+          description: 部门 ID
+          required: true
+          example: ''
+          schema:
+            type: string
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResultListUser'
+              example:
+                code: 0
+                msg: ''
+                data:
+                  - id: ''
+                    firstName: ''
+                    lastName: ''
+                    displayName: ''
+                    email: ''
+                    password: ''
+                    tenantId: ''
+                    pictureSet: false
+      security:
+        - BearerAuth: []
+  /api/dept/list:
+    get:
+      summary: 获取部门列表
+      deprecated: false
+      description: ''
+      tags: []
+      parameters: []
+      responses:
+        '200':
+          description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResultListDepartmentDTO'
+              examples:
+                '1':
+                  summary: 成功示例
+                  value:
+                    code: 0
+                    msg: ''
+                    data:
+                      - id: ''
+                        name: ''
+                '2':
+                  summary: 成功示例
+                  value:
+                    code: 0
+                    msg: ''
+                    data:
+                      - id: ''
+                        name: ''
+      security:
+        - BearerAuth: []
+  /api/role/list:
+    get:
+      summary: 获取角色列表
+      deprecated: false
+      description: ''
+      tags: []
+      parameters: []
+      responses:
+        '200':
+          description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResultListRoleDTO'
+              examples:
+                '1':
+                  summary: 成功示例
+                  value:
+                    code: 0
+                    msg: ''
+                    data:
+                      - id: ''
+                        name: ''
+                '2':
+                  summary: 成功示例
+                  value:
+                    code: 0
+                    msg: ''
+                    data:
+                      - id: ''
+                        name: ''
+      security:
+        - BearerAuth: []
+  /api/dept/add:
+    post:
+      summary: 创建部门
+      deprecated: false
+      description: ''
+      tags: []
+      parameters: []
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DepartmentCreateRequest'
+              description: ''
+      responses:
+        '200':
+          description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResultGroup'
+              example:
+                code: 0
+                msg: ''
+                data:
+                  id: ''
+                  name: ''
+                  type: ''
+      security:
+        - BearerAuth: []
+  /api/dept/{id}/members:
+    get:
+      summary: 获取部门成员
+      deprecated: false
+      description: ''
+      tags: []
+      parameters:
+        - name: id
+          in: path
+          description: ''
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResultListUserInfoDTO'
+              examples:
+                '1':
+                  summary: 成功示例
+                  value:
+                    code: 0
+                    msg: ''
+                    data:
+                      - id: ''
+                        firstName: ''
+                        lastName: ''
+                        dept: ''
+                        role: ''
+                '2':
+                  summary: 成功示例
+                  value:
+                    code: 0
+                    msg: ''
+                    data:
+                      - id: ''
+                        firstName: ''
+                        lastName: ''
+                        dept: ''
+                        role: ''
+      security:
+        - BearerAuth: []
+  /api/dept/{id}:
+    put:
+      summary: 更新部门
+      deprecated: false
+      description: ''
+      tags: []
+      parameters:
+        - name: id
+          in: path
+          description: ''
+          required: true
+          schema:
+            type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DepartmentUpdateRequest'
+              description: ''
+      responses:
+        '200':
+          description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResultGroup'
+              example:
+                code: 0
+                msg: ''
+                data:
+                  id: ''
+                  name: ''
+                  type: ''
+      security:
+        - BearerAuth: []
+    delete:
+      summary: 删除部门
+      deprecated: false
+      description: ''
+      tags: []
+      parameters:
+        - name: id
+          in: path
+          description: ''
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResultString'
+              example:
+                code: 0
+                msg: ''
+                data: ''
+      security:
+        - BearerAuth: []
+components:
+  schemas:
+    UserInfoDTO:
+      type: object
+      properties:
+        id:
+          type: string
+          description: ''
+        firstName:
+          type: string
+          description: ''
+        lastName:
+          type: string
+          description: ''
+        dept:
+          type: string
+          description: 部门
+        role:
+          type: string
+          description: 角色
+    DepartmentDTO: &ref_0
+      type: object
+      properties:
+        id:
+          type: string
+          description: ''
+        name:
+          type: string
+          description: ''
+    ResultListDepartmentDTO:
+      type: object
+      properties:
+        code:
+          type: integer
+          description: ''
+        msg:
+          type: string
+          description: ''
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/DepartmentDTO'
+            description: 部门信息DTO
+          description: ''
+    User:
+      type: object
+      properties:
+        id:
+          type: string
+        firstName:
+          type: string
+        lastName:
+          type: string
+        displayName:
+          type: string
+        email:
+          type: string
+        password:
+          type: string
+        tenantId:
+          type: string
+        pictureSet:
+          type: boolean
+    RoleDTO: *ref_0
+    ResultString:
+      type: object
+      properties:
+        code:
+          type: integer
+          description: ''
+        msg:
+          type: string
+          description: ''
+        data:
+          type: string
+          description: ''
+    ResultListRoleDTO:
+      type: object
+      properties:
+        code:
+          type: integer
+          description: ''
+        msg:
+          type: string
+          description: ''
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/RoleDTO'
+            description: 角色信息DTO
+          description: ''
+    DepartmentCreateRequest: &ref_1
+      type: object
+      properties:
+        name:
+          type: string
+          description: ''
+        parentId:
+          type: string
+          description: ''
+        managerId:
+          type: string
+          description: ''
+    Group:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        type:
+          type: string
+    DepartmentUpdateRequest: *ref_1
+    ResultGroup:
+      type: object
+      properties:
+        code:
+          type: integer
+          description: ''
+        msg:
+          type: string
+          description: ''
+        data:
+          $ref: '#/components/schemas/Group'
+          description: ''
+    ResultListUserInfoDTO:
+      type: object
+      properties:
+        code:
+          type: integer
+          description: ''
+        msg:
+          type: string
+          description: ''
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/UserInfoDTO'
+            description: com.guhao.oahomework.controller.OrganizationController.UserInfoDTO
+          description: ''
+    ResultListUser:
+      type: object
+      properties:
+        code:
+          type: integer
+          description: ''
+        msg:
+          type: string
+          description: ''
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/User'
+            description: org.flowable.idm.api.User
+          description: ''
+  responses: {}
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+servers: []
+security:
+  - BearerAuth: []
