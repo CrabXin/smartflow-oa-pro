@@ -1,0 +1,610 @@
+openapi: 3.0.1
+info:
+  title: SmartFlow OA API
+  description: |
+    SmartFlow OA 系统后端接口定义。
+    本文档基于当前前端项目的页面逻辑与 mock 数据整理而来，可用于 Swagger UI 展示与 Spring Boot 代码生成。
+  version: 1.0.0
+tags: []
+paths:
+  /api/users:
+    get:
+      summary: 获取用户列表
+      deprecated: false
+      description: ""
+      tags: []
+      parameters:
+        - name: department
+          in: query
+          description: 部门名称
+          required: false
+          schema:
+            type: string
+        - name: page
+          in: query
+          description: 页码，从 1 开始
+          required: true
+          example: 1
+          schema:
+            type: integer
+        - name: limit
+          in: query
+          description: 每页条数
+          required: true
+          example: 20
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: 成功
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ResultIPageUser"
+              example:
+                code: 0
+                msg: ""
+                data:
+                  records:
+                    - id: ""
+                      firstName: ""
+                      lastName: ""
+                      displayName: ""
+                      email: ""
+                      password: ""
+                      tenantId: ""
+                      pictureSet: false
+                  total: 0
+                  size: 0
+                  current: 0
+                  orders:
+                    - column: ""
+                      asc: false
+                  optimizeCountSql: false
+                  searchCount: false
+                  optimizeJoinOfCountSql: false
+                  maxLimit: 0
+                  countId: ""
+                  pages: 0
+          headers: {}
+      security:
+        - BearerAuth: []
+    post:
+      summary: 创建用户
+      deprecated: false
+      description: ""
+      tags: []
+      parameters: []
+      requestBody:
+        content:
+          application/json:
+            schema:
+              description: ""
+              type: object
+              properties:
+                name:
+                  type: string
+                  description: ""
+                email:
+                  type: string
+                  description: ""
+                department:
+                  type: string
+                  description: ""
+                role:
+                  type: string
+                  description: ""
+            examples: {}
+      responses:
+        "200":
+          description: ""
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ResultUser"
+              example:
+                code: 0
+                msg: ""
+                data:
+                  id: ""
+                  firstName: ""
+                  lastName: ""
+                  displayName: ""
+                  email: ""
+                  password: ""
+                  tenantId: ""
+                  pictureSet: false
+          headers: {}
+      security:
+        - BearerAuth: []
+  /api/users/{id}:
+    put:
+      summary: 更新用户
+      deprecated: false
+      description: ""
+      tags: []
+      parameters:
+        - name: id
+          in: path
+          description: 用户 ID
+          required: true
+          example: ""
+          schema:
+            type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              description: ""
+              type: object
+              properties:
+                name:
+                  type: string
+                  description: ""
+                email:
+                  type: string
+                  description: ""
+                department:
+                  type: string
+                  description: ""
+                role:
+                  type: string
+                  description: ""
+            examples: {}
+      responses:
+        "200":
+          description: 更新成功
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ResultUser"
+              example:
+                code: 0
+                msg: ""
+                data:
+                  id: ""
+                  firstName: ""
+                  lastName: ""
+                  displayName: ""
+                  email: ""
+                  password: ""
+                  tenantId: ""
+                  pictureSet: false
+          headers: {}
+      security:
+        - BearerAuth: []
+    delete:
+      summary: 删除用户
+      deprecated: false
+      description: ""
+      tags: []
+      parameters:
+        - name: id
+          in: path
+          description: 用户 ID
+          required: true
+          example: ""
+          schema:
+            type: string
+      responses:
+        "200":
+          description: 删除成功
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ResultString"
+              example:
+                code: 0
+                msg: ""
+                data: ""
+      security:
+        - BearerAuth: []
+  /api/users/list:
+    get:
+      summary: 获取用户列表
+      deprecated: false
+      description: ""
+      tags: []
+      parameters:
+        - name: department
+          in: query
+          description: ""
+          required: false
+          schema:
+            type: string
+        - name: page
+          in: query
+          description: ""
+          required: true
+          example: 1
+          schema:
+            type: integer
+        - name: limit
+          in: query
+          description: ""
+          required: true
+          example: 20
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: ""
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ResultIPageUserInfoDTO"
+              example:
+                code: 0
+                msg: ""
+                data:
+                  records:
+                    - id: ""
+                      firstName: ""
+                      lastName: ""
+                      dept: ""
+                      role: ""
+                  total: 0
+                  size: 0
+                  current: 0
+                  orders:
+                    - column: ""
+                      asc: false
+                  optimizeCountSql: false
+                  searchCount: false
+                  optimizeJoinOfCountSql: false
+                  maxLimit: 0
+                  countId: ""
+                  pages: 0
+      security:
+        - BearerAuth: []
+  /api/users/add:
+    post:
+      summary: 创建用户
+      deprecated: false
+      description: ""
+      tags: []
+      parameters: []
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UserCreateRequest"
+              description: ""
+      responses:
+        "200":
+          description: ""
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ResultUser"
+              example:
+                code: 0
+                msg: ""
+                data:
+                  id: ""
+                  firstName: ""
+                  lastName: ""
+                  displayName: ""
+                  email: ""
+                  password: ""
+                  tenantId: ""
+                  pictureSet: false
+      security:
+        - BearerAuth: []
+  /api/users/update:
+    put:
+      summary: 更新用户
+      deprecated: false
+      description: ""
+      tags: []
+      parameters: []
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UserUpdateRequest"
+              description: ""
+      responses:
+        "200":
+          description: ""
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Result"
+                description: com.guhao.oahomework.common.Result
+              example:
+                code: 1
+                msg: 成功
+                data: {}
+      security:
+        - BearerAuth: []
+  /api/users/delete/{id}:
+    delete:
+      summary: 删除用户
+      deprecated: false
+      description: ""
+      tags: []
+      parameters:
+        - name: id
+          in: path
+          description: ""
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: ""
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ResultString"
+              example:
+                code: 0
+                msg: ""
+                data: ""
+      security:
+        - BearerAuth: []
+components:
+  schemas:
+    UserInfoDTO:
+      type: object
+      properties:
+        id:
+          type: string
+          description: ""
+        firstName:
+          type: string
+          description: ""
+        lastName:
+          type: string
+          description: ""
+        dept:
+          type: string
+          description: 部门
+        role:
+          type: string
+          description: 角色
+    OrderItem:
+      type: object
+      properties:
+        column:
+          type: string
+          description: 需要进行排序的字段
+        asc:
+          type: boolean
+          description: 是否正序排列，默认 true
+          default: true
+    User:
+      type: object
+      properties:
+        id:
+          type: string
+        firstName:
+          type: string
+        lastName:
+          type: string
+        displayName:
+          type: string
+        email:
+          type: string
+        password:
+          type: string
+        tenantId:
+          type: string
+        pictureSet:
+          type: boolean
+    IPageUser:
+      type: object
+      properties:
+        records:
+          type: array
+          items:
+            $ref: "#/components/schemas/User"
+            description: org.flowable.idm.api.User
+          description: 查询数据列表
+          default: Collections.emptyList()
+        total:
+          type: integer
+          description: 总数
+          format: int64
+          default: 0
+        size:
+          type: integer
+          description: 每页显示条数，默认 10
+          format: int64
+          default: 10
+        current:
+          type: integer
+          description: 当前页
+          format: int64
+          default: 1
+        orders:
+          type: array
+          items:
+            $ref: "#/components/schemas/OrderItem"
+            description: com.baomidou.mybatisplus.core.metadata.OrderItem
+          description: 排序字段信息
+          default: new ArrayList<>()
+        optimizeCountSql:
+          type: boolean
+          description: 自动优化 COUNT SQL
+          default: true
+        searchCount:
+          type: boolean
+          description: 是否进行 count 查询
+          default: true
+        optimizeJoinOfCountSql:
+          type: boolean
+          description: "{@link #optimizeJoinOfCountSql()}"
+          default: true
+        maxLimit:
+          type: integer
+          description: 单页分页条数限制
+          format: int64
+        countId:
+          type: string
+          description: countId
+        pages:
+          type: integer
+          format: int64
+    IPageUserInfoDTO:
+      type: object
+      properties:
+        records:
+          type: array
+          items:
+            $ref: "#/components/schemas/UserInfoDTO"
+            description: com.guhao.oahomework.controller.user.UserController.UserInfoDTO
+          description: 查询数据列表
+          default: Collections.emptyList()
+        total:
+          type: integer
+          description: 总数
+          format: int64
+          default: 0
+        size:
+          type: integer
+          description: 每页显示条数，默认 10
+          format: int64
+          default: 10
+        current:
+          type: integer
+          description: 当前页
+          format: int64
+          default: 1
+        orders:
+          type: array
+          items:
+            $ref: "#/components/schemas/OrderItem"
+            description: com.baomidou.mybatisplus.core.metadata.OrderItem
+          description: 排序字段信息
+          default: new ArrayList<>()
+        optimizeCountSql:
+          type: boolean
+          description: 自动优化 COUNT SQL
+          default: true
+        searchCount:
+          type: boolean
+          description: 是否进行 count 查询
+          default: true
+        optimizeJoinOfCountSql:
+          type: boolean
+          description: "{@link #optimizeJoinOfCountSql()}"
+          default: true
+        maxLimit:
+          type: integer
+          description: 单页分页条数限制
+          format: int64
+        countId:
+          type: string
+          description: countId
+        pages:
+          type: integer
+          format: int64
+    UserCreateRequest:
+      type: object
+      properties:
+        firstName:
+          type: string
+          description: ""
+        lastName:
+          type: string
+          description: ""
+        email:
+          type: string
+          description: ""
+        department:
+          type: string
+          description: ""
+        role:
+          type: string
+          description: ""
+    ResultString:
+      type: object
+      properties:
+        code:
+          type: integer
+          description: ""
+        msg:
+          type: string
+          description: ""
+        data:
+          type: string
+          description: ""
+    ResultIPageUser:
+      type: object
+      properties:
+        code:
+          type: integer
+          description: ""
+        msg:
+          type: string
+          description: ""
+        data:
+          $ref: "#/components/schemas/IPageUser"
+          description: ""
+    ResultIPageUserInfoDTO:
+      type: object
+      properties:
+        code:
+          type: integer
+          description: ""
+        msg:
+          type: string
+          description: ""
+        data:
+          $ref: "#/components/schemas/IPageUserInfoDTO"
+          description: ""
+    UserUpdateRequest:
+      type: object
+      properties:
+        id:
+          type: string
+          description: 用于定位用户
+        oldDept:
+          type: string
+          description: ""
+        oldRole:
+          type: string
+          description: ""
+        newDept:
+          type: string
+          description: ""
+        newRole:
+          type: string
+          description: ""
+      description: 至少包含一个字段
+    ResultUser:
+      type: object
+      properties:
+        code:
+          type: integer
+          description: ""
+        msg:
+          type: string
+          description: ""
+        data:
+          $ref: "#/components/schemas/User"
+          description: ""
+    Result:
+      type: object
+      properties:
+        code:
+          type: integer
+          description: ""
+        msg:
+          type: string
+          description: ""
+        data:
+          type: object
+          properties: {}
+          description: ""
+  responses: {}
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+servers: []
+security:
+  - BearerAuth: []

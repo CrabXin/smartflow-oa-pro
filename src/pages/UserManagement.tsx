@@ -5,8 +5,6 @@ import {
   MoreHorizontal, 
   Edit, 
   Trash2, 
-  UserCheck,
-  UserX,
   Filter,
   RefreshCw
 } from 'lucide-react';
@@ -87,12 +85,19 @@ export default function UserManagement() {
   const [page, setPage] = useState(1);
   const queryClient = useQueryClient();
   
-  // Form state
+  // Form state for create
   const [formData, setFormData] = useState({
-    name: '',
+    firstName: '',
+    lastName: '',
     email: '',
     department: '',
-    role: 'employee' as 'admin' | 'manager' | 'employee',
+    role: '',
+  });
+
+  // Form state for update (only dept and role)
+  const [updateFormData, setUpdateFormData] = useState({
+    department: '',
+    role: '',
   });
 
   // 获取部门和角色列表
@@ -147,12 +152,11 @@ export default function UserManagement() {
   });
 
   const updateUserMutation = useMutation({
-    mutationFn: ({ id, payload }: { id: string; payload: UserUpdatePayload }) =>
-      apiUpdateUser(id, payload),
+    mutationFn: (payload: UserUpdatePayload) => apiUpdateUser(payload),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['users'] });
       setEditingUser(null);
-      resetForm();
+      resetUpdateForm();
       toast.success('用户更新成功');
     },
     onError: (error: unknown) => {
@@ -172,16 +176,36 @@ export default function UserManagement() {
   });
 
   const handleAddUser = () => {
-    if (!formData.name || !formData.email) {
+    if (!formData.firstName || !formData.lastName || !formData.email) {
       toast.error('请填写姓名和邮箱');
       return;
     }
-    createUserMutation.mutate(formData);
+    if (!formData.department || !formData.role) {
+      toast.error('请选择部门和角色');
+      return;
+    }
+    createUserMutation.mutate({
+      firstName: formData.firstName,
+      lastName: formData.lastName,
+      email: formData.email,
+      department: formData.department,
+      role: formData.role,
+    });
   };
 
   const handleUpdateUser = () => {
     if (!editingUser) return;
-    updateUserMutation.mutate({ id: editingUser.id, payload: formData });
+    if (!updateFormData.department || !updateFormData.role) {
+      toast.error('请选择部门和角色');
+      return;
+    }
+    updateUserMutation.mutate({
+      id: editingUser.id,
+      oldDept: editingUser.department,
+      oldRole: editingUser.role,
+      newDept: updateFormData.department,
+      newRole: updateFormData.role,
+    });
   };
 
   const handleDeleteUser = (userId: string) => {
@@ -190,31 +214,27 @@ export default function UserManagement() {
     }
   };
 
-  const handleToggleStatus = (userId: string) => {
-    const user = users.find(u => u.id === userId);
-    if (!user) return;
-    updateUserMutation.mutate({
-      id: userId,
-      payload: { status: user.status === 'active' ? 'inactive' : 'active' },
-    });
-  };
-
   const resetForm = () => {
-    // 使用第一个角色作为默认值，如果没有角色则使用 'employee'
-    const defaultRole = roles.length > 0 ? (roles[0].id as 'admin' | 'manager' | 'employee') : 'employee';
+    const defaultRole = roles.length > 0 ? roles[0].id : '';
     setFormData({
-      name: '',
+      firstName: '',
+      lastName: '',
       email: '',
       department: '',
       role: defaultRole,
     });
   };
 
+  const resetUpdateForm = () => {
+    setUpdateFormData({
+      department: '',
+      role: '',
+    });
+  };
+
   const openEditDialog = (user: User) => {
     setEditingUser(user);
-    setFormData({
-      name: user.name,
-      email: user.email,
+    setUpdateFormData({
       department: user.department,
       role: user.role,
     });
@@ -251,12 +271,21 @@ export default function UserManagement() {
             </DialogHeader>
             <div className="grid gap-4 py-4">
               <div className="grid gap-2">
-                <Label htmlFor="name">姓名</Label>
+                <Label htmlFor="firstName">名</Label>
                 <Input
-                  id="name"
-                  value={formData.name}
-                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                  placeholder="请输入姓名"
+                  id="firstName"
+                  value={formData.firstName}
+                  onChange={(e) => setFormData({ ...formData, firstName: e.target.value })}
+                  placeholder="请输入名"
+                />
+              </div>
+              <div className="grid gap-2">
+                <Label htmlFor="lastName">姓</Label>
+                <Input
+                  id="lastName"
+                  value={formData.lastName}
+                  onChange={(e) => setFormData({ ...formData, lastName: e.target.value })}
+                  placeholder="请输入姓"
                 />
               </div>
               <div className="grid gap-2">
@@ -289,10 +318,10 @@ export default function UserManagement() {
                 <Label>角色</Label>
                 <Select
                   value={formData.role}
-                  onValueChange={(value) => setFormData({ ...formData, role: value as any })}
+                  onValueChange={(value) => setFormData({ ...formData, role: value })}
                 >
                   <SelectTrigger>
-                    <SelectValue />
+                    <SelectValue placeholder="选择角色" />
                   </SelectTrigger>
                   <SelectContent>
                     {roles.map((role) => (
@@ -352,20 +381,19 @@ export default function UserManagement() {
                 <TableHead>用户</TableHead>
                 <TableHead>部门</TableHead>
                 <TableHead>角色</TableHead>
-                <TableHead>状态</TableHead>
                 <TableHead className="w-12"></TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {isLoading ? (
                 <TableRow>
-                  <TableCell colSpan={5} className="text-center py-8 text-muted-foreground">
+                  <TableCell colSpan={4} className="text-center py-8 text-muted-foreground">
                     加载中...
                   </TableCell>
                 </TableRow>
               ) : users.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={5} className="text-center py-8 text-muted-foreground">
+                  <TableCell colSpan={4} className="text-center py-8 text-muted-foreground">
                     暂无用户数据
                   </TableCell>
                 </TableRow>
@@ -381,18 +409,15 @@ export default function UserManagement() {
                       </Avatar>
                       <div>
                         <p className="font-medium text-foreground">{user.name}</p>
-                        <p className="text-sm text-muted-foreground">{user.email}</p>
+                        {user.email && (
+                          <p className="text-sm text-muted-foreground">{user.email}</p>
+                        )}
                       </div>
                     </div>
                   </TableCell>
                   <TableCell className="text-muted-foreground">{user.department}</TableCell>
                   <TableCell>
-                    <Badge variant="secondary">{roleMap[user.role]}</Badge>
-                  </TableCell>
-                  <TableCell>
-                    <Badge variant={user.status === 'active' ? 'default' : 'outline'}>
-                      {user.status === 'active' ? '在职' : '离职'}
-                    </Badge>
+                    <Badge variant="secondary">{roleMap[user.role] || user.role}</Badge>
                   </TableCell>
                   <TableCell>
                     <DropdownMenu>
@@ -405,19 +430,6 @@ export default function UserManagement() {
                         <DropdownMenuItem onClick={() => openEditDialog(user)}>
                           <Edit className="mr-2 h-4 w-4" />
                           编辑
-                        </DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => handleToggleStatus(user.id)}>
-                          {user.status === 'active' ? (
-                            <>
-                              <UserX className="mr-2 h-4 w-4" />
-                              停用
-                            </>
-                          ) : (
-                            <>
-                              <UserCheck className="mr-2 h-4 w-4" />
-                              启用
-                            </>
-                          )}
                         </DropdownMenuItem>
                         <DropdownMenuSeparator />
                         <DropdownMenuItem 
@@ -448,31 +460,34 @@ export default function UserManagement() {
             </DialogDescription>
           </DialogHeader>
           <div className="grid gap-4 py-4">
+            {editingUser && (
+              <>
+                <div className="grid gap-2">
+                  <Label>当前部门</Label>
+                  <Input
+                    value={editingUser.department}
+                    disabled
+                    className="bg-muted"
+                  />
+                </div>
+                <div className="grid gap-2">
+                  <Label>当前角色</Label>
+                  <Input
+                    value={roleMap[editingUser.role] || editingUser.role}
+                    disabled
+                    className="bg-muted"
+                  />
+                </div>
+              </>
+            )}
             <div className="grid gap-2">
-              <Label htmlFor="edit-name">姓名</Label>
-              <Input
-                id="edit-name"
-                value={formData.name}
-                onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-              />
-            </div>
-            <div className="grid gap-2">
-              <Label htmlFor="edit-email">邮箱</Label>
-              <Input
-                id="edit-email"
-                type="email"
-                value={formData.email}
-                onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-              />
-            </div>
-            <div className="grid gap-2">
-              <Label>部门</Label>
+              <Label>新部门</Label>
               <Select
-                value={formData.department}
-                onValueChange={(value) => setFormData({ ...formData, department: value })}
+                value={updateFormData.department}
+                onValueChange={(value) => setUpdateFormData({ ...updateFormData, department: value })}
               >
                 <SelectTrigger>
-                  <SelectValue />
+                  <SelectValue placeholder="选择新部门" />
                 </SelectTrigger>
                 <SelectContent>
                   {departments.map((dept) => (
@@ -482,13 +497,13 @@ export default function UserManagement() {
               </Select>
             </div>
             <div className="grid gap-2">
-              <Label>角色</Label>
+              <Label>新角色</Label>
               <Select
-                value={formData.role}
-                onValueChange={(value) => setFormData({ ...formData, role: value as any })}
+                value={updateFormData.role}
+                onValueChange={(value) => setUpdateFormData({ ...updateFormData, role: value })}
               >
                 <SelectTrigger>
-                  <SelectValue />
+                  <SelectValue placeholder="选择新角色" />
                 </SelectTrigger>
                 <SelectContent>
                   {roles.map((role) => (

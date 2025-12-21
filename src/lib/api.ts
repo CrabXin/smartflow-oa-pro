@@ -298,8 +298,17 @@ interface BackendUser {
   pictureSet?: boolean;
 }
 
-interface BackendIPageUser {
-  records: BackendUser[];
+// UserInfoDTO 从 /api/users/list 返回
+interface BackendUserInfoDTO {
+  id: string;
+  firstName?: string;
+  lastName?: string;
+  dept: string; // 部门
+  role: string; // 角色
+}
+
+interface BackendIPageUserInfoDTO {
+  records: BackendUserInfoDTO[];
   total: number;
   size: number;
   current: number;
@@ -310,6 +319,23 @@ export interface UsersPage {
   total: number;
   page: number;
   pageSize: number;
+}
+
+function mapBackendUserInfoDTO(user: BackendUserInfoDTO): UiUser {
+  const name =
+    `${user.firstName ?? ""}${user.lastName ?? ""}`.trim() || "未知用户";
+  const avatar = name.slice(0, 2).toUpperCase();
+  return {
+    id: user.id,
+    name,
+    email: "", // UserInfoDTO 不包含 email，从其他地方获取或留空
+    avatar,
+    department: user.dept || "",
+    role: (user.role as UiUser["role"]) || "employee",
+    phone: "",
+    status: "active",
+    createdAt: "",
+  };
 }
 
 function mapBackendUser(user: BackendUser): UiUser {
@@ -343,38 +369,43 @@ export async function apiGetUsers(
   query: UserListQuery,
 ): Promise<UsersPage> {
   const params = new URLSearchParams();
-  if (query.search) params.set("search", query.search);
   if (query.department) params.set("department", query.department);
-  if (query.status) params.set("status", query.status);
   params.set("page", String(query.page ?? 1));
   params.set("limit", String(query.limit ?? 50));
 
-  const page = await requestResult<BackendIPageUser>(
-    `/api/users?${params.toString()}`,
+  const page = await requestResult<BackendIPageUserInfoDTO>(
+    `/api/users/list?${params.toString()}`,
   );
   return {
-    users: page.records.map(mapBackendUser),
+    users: page.records.map(mapBackendUserInfoDTO),
     total: page.total,
     page: page.current,
     pageSize: page.size,
   };
 }
 
+// UserCreateRequest 用于创建用户
 export interface UserCreatePayload {
-  name: string;
+  firstName: string;
+  lastName: string;
   email: string;
   department: string;
-  role: UiUser["role"];
+  role: string;
 }
 
-export type UserUpdatePayload = Partial<UserCreatePayload> & {
-  status?: UiUser["status"];
-};
+// UserUpdateRequest 用于更新用户（只更新部门和角色）
+export interface UserUpdatePayload {
+  id: string;
+  oldDept: string;
+  oldRole: string;
+  newDept: string;
+  newRole: string;
+}
 
 export async function apiCreateUser(
   payload: UserCreatePayload,
 ): Promise<UiUser> {
-  const created = await requestResult<BackendUser>("/api/users", {
+  const created = await requestResult<BackendUser>("/api/users/add", {
     method: "POST",
     body: JSON.stringify(payload),
   });
@@ -382,18 +413,16 @@ export async function apiCreateUser(
 }
 
 export async function apiUpdateUser(
-  id: string,
   payload: UserUpdatePayload,
-): Promise<UiUser> {
-  const updated = await requestResult<BackendUser>(`/api/users/${id}`, {
+): Promise<void> {
+  await requestResult<{ code: number; msg: string; data: object }>("/api/users/update", {
     method: "PUT",
     body: JSON.stringify(payload),
   });
-  return mapBackendUser(updated);
 }
 
 export async function apiDeleteUser(id: string): Promise<void> {
-  await requestResult<string>(`/api/users/${id}`, {
+  await requestResult<string>(`/api/users/delete/${id}`, {
     method: "DELETE",
   });
 }
