@@ -81,6 +81,11 @@ const timeSlots = [
 
 const weekDays = ['日', '一', '二', '三', '四', '五', '六'];
 
+// 格式化日期函数 - 移到组件外部避免 TDZ 错误
+const formatDate = (date: Date) => {
+  return date.toISOString().split('T')[0];
+};
+
 export default function MeetingBooking() {
   const { user: currentUser } = useAuth();
   const queryClient = useQueryClient();
@@ -142,10 +147,6 @@ export default function MeetingBooking() {
     const newStart = new Date(currentWeekStart);
     newStart.setDate(newStart.getDate() + (direction === 'next' ? 7 : -7));
     setCurrentWeekStart(newStart);
-  };
-
-  const formatDate = (date: Date) => {
-    return date.toISOString().split('T')[0];
   };
 
   // Get meetings for a specific room and date
