@@ -33,6 +33,8 @@ import {
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
+import { Checkbox } from '@/components/ui/checkbox';
+import { ScrollArea } from '@/components/ui/scroll-area';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '@/auth/AuthContext';
 import type { Meeting, MeetingRoom } from '@/data/mockData';
@@ -41,6 +43,8 @@ import {
   apiGetMeetings, 
   apiCreateMeeting, 
   apiDeleteMeeting,
+  apiGetMyMeetings,
+  apiGetUsers,
   type MeetingCreatePayload,
 } from '@/lib/api';
 import { toast } from 'sonner';
@@ -107,7 +111,7 @@ export default function MeetingBooking() {
     date: selectedDate,
     startTime: '09:00',
     endTime: '10:00',
-    attendees: '',
+    attendees: [] as string[], // 改为数组，存储用户ID
     description: '',
   });
 
@@ -129,6 +133,13 @@ export default function MeetingBooking() {
     queryKey: ['meeting-rooms'],
     queryFn: apiGetMeetingRooms,
   });
+
+  // Fetch users for attendee selection
+  const { data: usersPage } = useQuery({
+    queryKey: ['users', { page: 1, limit: 1000 }],
+    queryFn: () => apiGetUsers({ page: 1, limit: 1000 }),
+  });
+  const users = usersPage?.users ?? [];
 
   // Fetch meetings for the current week
   const weekDateRange = useMemo(() => {
@@ -187,7 +198,7 @@ export default function MeetingBooking() {
         date: selectedDate,
         startTime: '09:00',
         endTime: '10:00',
-        attendees: '',
+        attendees: [],
         description: '',
       });
       toast.success('会议预约成功');
@@ -220,11 +231,11 @@ export default function MeetingBooking() {
 
     const payload: MeetingCreatePayload = {
       title: bookingForm.title,
-      roomId: bookingForm.roomId,
+      roomId: Number(bookingForm.roomId),
       date: bookingForm.date,
       startTime: bookingForm.startTime,
       endTime: bookingForm.endTime,
-      attendees: bookingForm.attendees.split(',').map(a => a.trim()).filter(Boolean),
+      attendees: bookingForm.attendees, // 已经是用户ID数组
       description: bookingForm.description,
     };
 
@@ -352,12 +363,48 @@ export default function MeetingBooking() {
               </div>
               <div className="grid gap-2">
                 <Label htmlFor="attendees">参会人员</Label>
-                <Input
-                  id="attendees"
-                  value={bookingForm.attendees}
-                  onChange={(e) => setBookingForm({ ...bookingForm, attendees: e.target.value })}
-                  placeholder="多个参会人用逗号分隔"
-                />
+                <ScrollArea className="h-48 border rounded-md p-4">
+                  {users.length === 0 ? (
+                    <div className="text-center py-4 text-sm text-muted-foreground">
+                      加载中...
+                    </div>
+                  ) : (
+                    <div className="space-y-2">
+                      {users.map((user) => (
+                        <div key={user.id} className="flex items-center space-x-2">
+                          <Checkbox
+                            id={`attendee-${user.id}`}
+                            checked={bookingForm.attendees.includes(user.id)}
+                            onCheckedChange={(checked) => {
+                              if (checked) {
+                                setBookingForm({
+                                  ...bookingForm,
+                                  attendees: [...bookingForm.attendees, user.id],
+                                });
+                              } else {
+                                setBookingForm({
+                                  ...bookingForm,
+                                  attendees: bookingForm.attendees.filter((id) => id !== user.id),
+                                });
+                              }
+                            }}
+                          />
+                          <label
+                            htmlFor={`attendee-${user.id}`}
+                            className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer flex-1"
+                          >
+                            {user.name} {user.department && `(${user.department})`}
+                          </label>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </ScrollArea>
+                {bookingForm.attendees.length > 0 && (
+                  <div className="text-xs text-muted-foreground">
+                    已选择 {bookingForm.attendees.length} 人
+                  </div>
+                )}
               </div>
               <div className="grid gap-2">
                 <Label htmlFor="description">会议说明</Label>

@@ -174,6 +174,20 @@ interface BackendMeeting {
   createdAt: string;
 }
 
+// MeetingDTO 从 /api/my-meetings 返回
+interface BackendMeetingDTO {
+  id: number;
+  title: string;
+  date: string;
+  startTime: string;
+  endTime: string;
+  description: string;
+  status: string;
+  roomName: string;
+  organizerName: string;
+  attendeeNames: string[];
+}
+
 // 后端 MeetingRoom 结构
 interface BackendMeetingRoom {
   id: number;
@@ -731,11 +745,11 @@ export async function apiRejectWorkflow(
 
 export interface MeetingCreatePayload {
   title: string;
-  roomId: string;
+  roomId: number;
   date: string;
   startTime: string;
   endTime: string;
-  attendees: string[];
+  attendees: string[]; // 用户ID数组
   description: string;
 }
 
@@ -759,9 +773,15 @@ export async function apiGetMeetings(
 export async function apiCreateMeeting(
   payload: MeetingCreatePayload,
 ): Promise<UiMeeting> {
+  // 将 attendees 数组转换为逗号分隔的字符串传给后端（格式：id1,id2,id3）
   const backendPayload = {
-    ...payload,
-    roomId: Number(payload.roomId),
+    title: payload.title,
+    roomId: payload.roomId,
+    date: payload.date,
+    startTime: payload.startTime,
+    endTime: payload.endTime,
+    attendees: payload.attendees.join(","), // 转换为逗号分隔的用户ID字符串
+    description: payload.description,
   };
   const [rooms, meeting] = await Promise.all([
     apiGetMeetingRooms(),
@@ -774,6 +794,26 @@ export async function apiCreateMeeting(
   return mapBackendMeeting(meeting, roomMap);
 }
 
+// 获取我的会议列表
+export async function apiGetMyMeetings(): Promise<UiMeeting[]> {
+  const meetings = await requestResult<BackendMeetingDTO[]>("/api/my-meetings");
+  // MeetingDTO 包含更多信息，需要映射
+  return meetings.map((m) => ({
+    id: String(m.id),
+    title: m.title,
+    roomId: "", // MeetingDTO 没有 roomId，只有 roomName
+    roomName: m.roomName,
+    organizer: m.organizerName,
+    organizerId: "", // MeetingDTO 没有 organizerId
+    attendees: m.attendeeNames,
+    date: m.date,
+    startTime: m.startTime,
+    endTime: m.endTime,
+    description: m.description || "",
+    status: m.status as UiMeeting["status"],
+  }));
+}
+
 export async function apiDeleteMeeting(id: string): Promise<void> {
   await requestResult<string>(`/api/meetings/${id}`, {
     method: "DELETE",
@@ -781,7 +821,7 @@ export async function apiDeleteMeeting(id: string): Promise<void> {
 }
 
 export async function apiCheckMeetingAvailability(params: {
-  roomId: string;
+  roomId: number | string;
   date: string;
   startTime: string;
   endTime: string;

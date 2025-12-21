@@ -1,0 +1,457 @@
+openapi: 3.0.1
+info:
+  title: SmartFlow OA API
+  description: |
+    SmartFlow OA 系统后端接口定义。
+    本文档基于当前前端项目的页面逻辑与 mock 数据整理而来，可用于 Swagger UI 展示与 Spring Boot 代码生成。
+  version: 1.0.0
+tags: []
+paths:
+  /api/my-meetings:
+    get:
+      summary: 我的会议列表
+      deprecated: false
+      description: ''
+      tags: []
+      parameters: []
+      responses:
+        '200':
+          description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResultListMeetingDTO'
+              examples:
+                '1':
+                  summary: 成功示例
+                  value:
+                    code: 0
+                    msg: ''
+                    data:
+                      - id: 0
+                        title: ''
+                        date: ''
+                        startTime: ''
+                        endTime: ''
+                        description: ''
+                        status: ''
+                        roomName: ''
+                        organizerName: ''
+                        attendeeNames:
+                          - ''
+                '2':
+                  summary: 成功示例
+                  value:
+                    code: 0
+                    msg: ''
+                    data:
+                      - id: 0
+                        title: ''
+                        date: ''
+                        startTime: ''
+                        endTime: ''
+                        description: ''
+                        status: ''
+                        roomName: ''
+                        organizerName: ''
+                        attendeeNames:
+                          - ''
+      security:
+        - BearerAuth: []
+  /api/meeting-rooms:
+    get:
+      summary: 获取会议室列表
+      deprecated: false
+      description: ''
+      tags: []
+      parameters: []
+      responses:
+        '200':
+          description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResultListMeetingRoom'
+              example:
+                code: 0
+                msg: ''
+                data:
+                  - id: 0
+                    name: ''
+                    capacity: 0
+                    equipment: ''
+                    location: ''
+                    description: ''
+      security:
+        - BearerAuth: []
+  /api/meetings:
+    get:
+      summary: 获取会议预约列表
+      deprecated: false
+      description: ''
+      tags: []
+      parameters:
+        - name: date
+          in: query
+          description: ''
+          required: false
+          schema:
+            type: string
+        - name: roomId
+          in: query
+          description: ''
+          required: false
+          schema:
+            type: string
+      responses:
+        '200':
+          description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResultListMeeting'
+              example:
+                code: 0
+                msg: ''
+                data:
+                  - id: 0
+                    title: ''
+                    roomId: 0
+                    organizerId: ''
+                    attendees: ''
+                    date: ''
+                    startTime: ''
+                    endTime: ''
+                    description: ''
+                    status: ''
+                    createdAt: ''
+      security:
+        - BearerAuth: []
+    post:
+      summary: 创建会议预约
+      deprecated: false
+      description: ''
+      tags: []
+      parameters: []
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MeetingCreateRequest'
+              description: ''
+      responses:
+        '200':
+          description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResultMeeting'
+              example:
+                code: 0
+                msg: ''
+                data:
+                  id: 0
+                  title: ''
+                  roomId: 0
+                  organizerId: ''
+                  attendees: ''
+                  date: ''
+                  startTime: ''
+                  endTime: ''
+                  description: ''
+                  status: ''
+                  createdAt: ''
+      security:
+        - BearerAuth: []
+  /api/meetings/{id}:
+    delete:
+      summary: 取消会议预约
+      deprecated: false
+      description: ''
+      tags: []
+      parameters:
+        - name: id
+          in: path
+          description: ''
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResultString'
+              example:
+                code: 0
+                msg: ''
+                data: ''
+      security:
+        - BearerAuth: []
+  /api/meetings/check-availability:
+    get:
+      summary: 检查会议室时间段是否可用
+      deprecated: false
+      description: ''
+      tags: []
+      parameters:
+        - name: roomId
+          in: query
+          description: ''
+          required: true
+          schema:
+            type: integer
+        - name: date
+          in: query
+          description: ''
+          required: true
+          schema:
+            type: string
+        - name: startTime
+          in: query
+          description: ''
+          required: true
+          schema:
+            type: string
+        - name: endTime
+          in: query
+          description: ''
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResultAvailabilityResponse'
+              example:
+                code: 0
+                msg: ''
+                data:
+                  available: false
+      security:
+        - BearerAuth: []
+components:
+  schemas:
+    ResultListMeetingRoom:
+      type: object
+      properties:
+        code:
+          type: integer
+          description: ''
+        msg:
+          type: string
+          description: ''
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/MeetingRoom'
+            description: com.guhao.oahomework.entity.MeetingRoom
+          description: ''
+    ResultString:
+      type: object
+      properties:
+        code:
+          type: integer
+          description: ''
+        msg:
+          type: string
+          description: ''
+        data:
+          type: string
+          description: ''
+    ResultListMeeting:
+      type: object
+      properties:
+        code:
+          type: integer
+          description: ''
+        msg:
+          type: string
+          description: ''
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/Meeting'
+            description: com.guhao.oahomework.entity.Meeting
+          description: ''
+    ResultMeeting:
+      type: object
+      properties:
+        code:
+          type: integer
+          description: ''
+        msg:
+          type: string
+          description: ''
+        data:
+          $ref: '#/components/schemas/Meeting'
+          description: ''
+    MeetingDTO:
+      type: object
+      properties:
+        id:
+          type: integer
+          description: ''
+          format: int64
+        title:
+          type: string
+          description: ''
+        date:
+          type: string
+          description: ''
+        startTime:
+          type: string
+          description: ''
+        endTime:
+          type: string
+          description: ''
+        description:
+          type: string
+          description: ''
+        status:
+          type: string
+          description: ''
+        roomName:
+          type: string
+          description: ''
+        organizerName:
+          type: string
+          description: ''
+        attendeeNames:
+          type: array
+          items:
+            type: string
+          description: ''
+    ResultListMeetingDTO:
+      type: object
+      properties:
+        code:
+          type: integer
+          description: ''
+        msg:
+          type: string
+          description: ''
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/MeetingDTO'
+            description: 会议信息DTO
+          description: ''
+    ResultAvailabilityResponse:
+      type: object
+      properties:
+        code:
+          type: integer
+          description: ''
+        msg:
+          type: string
+          description: ''
+        data:
+          $ref: '#/components/schemas/AvailabilityResponse'
+          description: ''
+    MeetingRoom:
+      type: object
+      properties:
+        id:
+          type: integer
+          description: ''
+          format: int64
+        name:
+          type: string
+          description: ''
+        capacity:
+          type: integer
+          description: ''
+        equipment:
+          type: string
+          description: ''
+        location:
+          type: string
+          description: ''
+        description:
+          type: string
+          description: ''
+    Meeting:
+      type: object
+      properties:
+        id:
+          type: integer
+          description: ''
+          format: int64
+        title:
+          type: string
+          description: ''
+        roomId:
+          type: integer
+          description: ''
+          format: int64
+        organizerId:
+          type: string
+          description: ''
+        attendees:
+          type: string
+          description: ''
+        date:
+          type: string
+          description: ''
+        startTime:
+          type: string
+          description: ''
+        endTime:
+          type: string
+          description: ''
+        description:
+          type: string
+          description: ''
+        status:
+          type: string
+          description: ''
+        createdAt:
+          type: string
+          description: ''
+    MeetingCreateRequest:
+      type: object
+      properties:
+        title:
+          type: string
+          description: ''
+        roomId:
+          type: integer
+          description: ''
+          format: int64
+        date:
+          type: string
+          description: ''
+        startTime:
+          type: string
+          description: ''
+        endTime:
+          type: string
+          description: ''
+        attendees:
+          type: array
+          items:
+            type: string
+          description: ''
+        description:
+          type: string
+          description: ''
+    AvailabilityResponse:
+      type: object
+      properties:
+        available:
+          type: boolean
+          description: ''
+  responses: {}
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+servers: []
+security:
+  - BearerAuth: []
