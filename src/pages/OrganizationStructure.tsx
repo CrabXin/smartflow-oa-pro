@@ -131,9 +131,9 @@ function DepartmentNode({
 
         <span className="font-medium flex-1">{department.name}</span>
 
-        <Badge variant="outline" className="text-xs">
+        {/* <Badge variant="outline" className="text-xs">
           {department.memberCount} 人
-        </Badge>
+        </Badge> */}
       </div>
 
       {hasChildren && isExpanded && (
