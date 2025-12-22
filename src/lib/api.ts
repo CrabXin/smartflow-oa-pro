@@ -6,9 +6,10 @@ import type {
   MeetingRoom as UiMeetingRoom,
   Notification as UiNotification,
 } from "@/data/mockData";
+import { toast } from "sonner";
 
 const API_BASE_URL =
-  import.meta.env.VITE_API_BASE_URL ?? "http://localhost:8080";
+  import.meta.env.VITE_API_BASE_URL ?? "http://localhost:8081";
 
 type HttpMethod = "GET" | "POST" | "PUT" | "DELETE";
 
@@ -73,10 +74,12 @@ async function requestResult<T>(
   options: RequestInit = {},
 ): Promise<T> {
   const result = await requestJson<ResultWrapper<T>>(path, options);
-  // SmartFlow 后端示例中，有的成功 code=0，有的 code=1，这里统一视为成功
-  if (result.code !== 0 && result.code !== 1) {
-    throw new Error(result.msg || "接口返回错误");
+  // 当 code 为 0 时，代表操作失败，需要显示弹窗警告
+  if (result.code === 0) {
+    toast.error(result.msg || "操作失败");
+    throw new Error(result.msg || "操作失败");
   }
+  // code 不为 0 时视为成功（可能是 code=1 或其他值）
   return result.data;
 }
 
