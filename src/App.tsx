@@ -12,6 +12,7 @@ import OrganizationStructure from "./pages/OrganizationStructure";
 import WorkflowApproval from "./pages/WorkflowApproval";
 import MeetingBooking from "./pages/MeetingBooking";
 import NotificationCenter from "./pages/NotificationCenter";
+import AIChat from "./pages/AIChat";
 import Login from "./pages/Login";
 import NotFound from "./pages/NotFound";
 
@@ -38,6 +39,7 @@ const App = () => (
                 <Route path="/workflow" element={<WorkflowApproval />} />
                 <Route path="/meetings" element={<MeetingBooking />} />
                 <Route path="/notifications" element={<NotificationCenter />} />
+                <Route path="/ai-chat" element={<AIChat />} />
               </Route>
             </Route>
 

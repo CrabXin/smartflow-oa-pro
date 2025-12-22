@@ -12,6 +12,7 @@ import {
   LogOut,
   Settings,
   ChevronDown,
+  MessageSquare,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { User } from "@/data/mockData";
@@ -41,6 +42,7 @@ const navigation = [
   { name: "流程审批", href: "/workflow", icon: FileCheck },
   { name: "会议预约", href: "/meetings", icon: Calendar },
   { name: "通知中心", href: "/notifications", icon: Bell },
+  { name: "AI 聊天", href: "/ai-chat", icon: MessageSquare },
 ];
 
 export default function MainLayout() {
